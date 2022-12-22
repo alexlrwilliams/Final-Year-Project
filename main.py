@@ -1,19 +1,18 @@
-import os
 import json
+import os
 
-from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
-
-from torchsummary import summary
-from torch import optim
 from sklearn.metrics import classification_report, confusion_matrix
+from torch import optim
+from torchsummary import summary
+from tqdm import tqdm
 
+import config
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
 from utils import get_author_ind
-import config
 
 
 def five_fold(cur_time):
@@ -21,29 +20,21 @@ def five_fold(cur_time):
     dataloader_gen = MultiModalDataLoader()
 
     for fold, (train_index, test_index) in enumerate(dataloader_gen.split_indices):
-        print(fold, '-' * 50)
-        print(fold, train_index.shape, test_index.shape)
+        print('-' * 25, " Fold ", fold, '-' * 25)
 
-        print()
-
-        train_ind_SI = train_index
-        val_ind_SI = test_index
-        test_ind_SI = test_index
-
-        print(train_ind_SI.shape, val_ind_SI.shape, test_ind_SI.shape)
-
-        author_ind = get_author_ind(train_ind_SI, dataloader_gen.data_input)
+        author_ind = get_author_ind(train_index, dataloader_gen.data_input)
         speakers_num = len(author_ind)
 
-        train_loader = dataloader_gen.get_data_loader(train_ind_SI, author_ind)
-        val_loader = dataloader_gen.get_data_loader(val_ind_SI, author_ind)
-        test_loader = dataloader_gen.get_data_loader(test_ind_SI, author_ind)
+        train_loader = dataloader_gen.get_data_loader(train_index, author_ind)
+        val_loader = dataloader_gen.get_data_loader(test_index, author_ind)
+        test_loader = dataloader_gen.get_data_loader(test_index, author_ind)
 
         # Initialize the model and move to the device
         model = WeightedMultiModalFusionNetwork(speakers_num)
         model = model.to(device)
 
-        summary(model, [(config.TEXT_DIM,), (config.VIDEO_DIM,), (config.AUDIO_DIM,), (speakers_num,), (config.TEXT_DIM,)])
+        summary(model,
+                [(config.TEXT_DIM,), (config.VIDEO_DIM,), (config.AUDIO_DIM,), (speakers_num,), (config.TEXT_DIM,)])
 
         best_result = do_train(model, train_loader, val_loader)
 

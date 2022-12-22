@@ -8,7 +8,6 @@ def get_bert_encoding():
     text_bert_embeddings = []
 
     with jsonlines.open(BERT_TARGET_EMBEDDINGS) as reader:
-        print('opend bert : ', BERT_TARGET_EMBEDDINGS)
         for obj in reader:
             CLS_TOKEN_INDEX = 0
             features = obj['features'][CLS_TOKEN_INDEX]
@@ -17,9 +16,7 @@ def get_bert_encoding():
                 bert_embedding_target.append(np.array(features["layers"][layer]["values"]))
 
             bert_embedding_target = np.mean(bert_embedding_target, axis=0)
-            # print(bert_embedding_target.shape) 768
             text_bert_embeddings.append(np.copy(bert_embedding_target))
-    print(np.array(text_bert_embeddings).shape)  # 690 768
     return text_bert_embeddings
 
 def get_context_bert_encoding(dataset):

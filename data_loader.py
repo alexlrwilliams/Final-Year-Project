@@ -1,16 +1,17 @@
+import json
 import os
 import pickle
 
 import h5py
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-
-from utils import pickle_loader, toOneHot
-import json
-import config
-from dataset import MultiModalDataset
 from torch.utils.data import DataLoader
+
+import config
 from Textual.TextEncoding import get_bert_encoding, get_context_bert_encoding
+from dataset import MultiModalDataset
+from utils import pickle_loader, toOneHot
+
 
 class MultiModalDataLoader:
 
@@ -43,9 +44,6 @@ class MultiModalDataLoader:
             pickle.dump(split_indices, open(config.INDICES_FILE, 'wb'), protocol=2)
 
         self.split_indices = pickle_loader(config.INDICES_FILE)
-        print('after pickle_loader: ')
-        print(split_indices[0][0].shape, split_indices[0][1].shape)
-        print(len(split_indices))
 
     def parseData(self, text, video, audio, context):
         for idx, ID in enumerate(self.dataset_json.keys()):
