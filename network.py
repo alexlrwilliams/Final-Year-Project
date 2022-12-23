@@ -6,19 +6,19 @@ import config
 from classifier import Classifier
 
 
-class Fusion(nn.Module):
-    def __init__(self, modal_1, modal_2, modal_3):
-        super(Fusion, self).__init__()
+class ModalityFusion(nn.Module):
+    def __init__(self):
+        super(ModalityFusion, self).__init__()
         self.weight_1 = nn.Parameter(torch.ones(1))
         self.weight_2 = nn.Parameter(torch.ones(1))
         self.weight_3 = nn.Parameter(torch.ones(1))
 
-    def forward(self, modal_1, modal_2, modal_3):
-        modality_1 = modal_1 * self.weight_1
-        modality_2 = modal_2 * self.weight_2
-        modality_3 = modal_3 * self.weight_3
+    def forward(self, text, audio, video):
+        text_w = text * self.weight_1
+        audio_w = audio * self.weight_2
+        video_w = video * self.weight_3
 
-        return torch.cat([modality_1, modality_2, modality_3], -1)
+        return torch.cat([text_w, audio_w, video_w], -1)
 
 class SubNet(nn.Module):
     def __init__(self, in_size, hidden_size, dropout):
@@ -49,7 +49,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.context_subnet = SubNet(config.TEXT_DIM, config.CONTEXT_HIDDEN, config.CONTEXT_DROPOUT)
         self.speaker_subnet = SubNet(speaker_num, config.SPEAKER_HIDDEN, config.SPEAKER_DROPOUT)
 
-        self.fusion_1 = Fusion(config.TEXT_HIDDEN, config.AUDIO_HIDDEN, config.VIDEO_HIDDEN)
+        self.fusion = ModalityFusion()
 
         self.post_fusion_dropout = nn.Dropout(p=config.POST_FUSION_DROPOUT)
 
@@ -69,7 +69,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
         speaker_h = self.speaker_subnet(speaker_x)
         context_h = self.context_subnet(context_x)
 
-        fusion_h = self.fusion_1(text_h, audio_h, video_h)
+        fusion_h = self.fusion(text_h, audio_h, video_h)
 
         x = self.post_fusion_dropout(fusion_h)
 

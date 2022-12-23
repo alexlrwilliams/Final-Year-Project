@@ -61,7 +61,7 @@ class Classifier(torch.nn.Module):
                 train_result = evaluate(self, train_loader)
                 self.epoch_end(epoch, config.EPOCHS, val_result, train_result)
 
-            if (best_model.epoch - epoch) >= config.EARLY_STOPPING:
+            if (epoch - best_model.epoch) >= config.EARLY_STOPPING:
                 break
 
         print(f'the best epochs:{best_model.epoch},the best acc:{best_model.acc}')
