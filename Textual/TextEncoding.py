@@ -1,6 +1,7 @@
 import jsonlines
 import numpy as np
 
+import config
 from config import BERT_TARGET_EMBEDDINGS, BERT_CONTEXT_EMBEDDINGS
 
 
@@ -9,8 +10,7 @@ def get_bert_encoding():
 
     with jsonlines.open(BERT_TARGET_EMBEDDINGS) as reader:
         for obj in reader:
-            CLS_TOKEN_INDEX = 0
-            features = obj['features'][CLS_TOKEN_INDEX]
+            features = obj['features'][config.CLS_TOKEN_INDEX]
             bert_embedding_target = []
             for layer in [0, 1, 2, 3]:
                 bert_embedding_target.append(np.array(features["layers"][layer]["values"]))
@@ -27,8 +27,7 @@ def get_context_bert_encoding(dataset):
         context_utterance_embeddings = []
         # Visit each context utterance
         for obj in reader:
-            CLS_TOKEN_INDEX = 0
-            features = obj['features'][CLS_TOKEN_INDEX]
+            features = obj['features'][config.CLS_TOKEN_INDEX]
             bert_embedding_target = []
             for layer in [0, 1, 2, 3]:
                 bert_embedding_target.append(np.array(features["layers"][layer]["values"]))

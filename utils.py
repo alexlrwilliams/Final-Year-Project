@@ -1,8 +1,10 @@
-import numpy as np
-import torch
 import pickle
 import sys
+
+import numpy as np
+import torch
 import tqdm
+
 import config
 
 
@@ -48,48 +50,45 @@ def accuracy(output, labels):
     return (output.argmax(1) == torch.squeeze(labels.long())).sum().item()
 
 
-def val_evaluate(model, val_loader):
-    for data in val_loader:
-        outputs = [model.valStep(data)]
-        # print(outputs)
-    return model.validation_epoch_end(outputs)
+def evaluate(model, data_loader):
+    model.eval()
+    y_pred, y_true = [], []
+    eval_loss = 0.0
+    eval_acc = 0.0
+    with torch.no_grad():
+        with tqdm.tqdm(data_loader) as td:
+            for batch_data in td:
+                val_loss, val_acc, outputs, labels = model.step(batch_data)
+
+                eval_loss += val_loss.item()
+                eval_acc += val_acc
+
+                y_pred.append(outputs.argmax(1).cpu())
+                y_true.append(labels.squeeze().long().cpu())
+
+    pred, true = torch.cat(y_pred), torch.cat(y_true)
+    eval_loss = eval_loss / len(pred)
+    eval_acc = eval_acc / len(pred)
+
+    return {
+        'loss': eval_loss,
+        'acc': eval_acc,
+        'pred': pred,
+        'true': true
+    }
 
 
-def trainEval(model, train_loader):
-    for data in train_loader:
-        outputs = [model.trainEvalStep(data)]
-        # print(outputs)
-    return model.train_epoch_end(outputs)
+class SaveBestModel:
+    def __init__(self):
+        self.acc = float('-inf')
+        self.epoch = 0
+        self.model = None
 
-
-def fit(epochs, lr, model, train_loader, val_loader=None, opt_func=torch.optim.SGD):
-    history = []
-    optimizer = opt_func(model.parameters(), lr)
-    epoch_validation_losses = []
-    epoch_validation_accuracies = []
-    print("start training")
-    for epoch in tqdm.trange(epochs):
-
-        # Training Phase
-        for data in train_loader:
-            loss = model.trainStep(data)
-            # print(loss)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-        # Validation phase
-        val_result = val_evaluate(model, val_loader)
-        train_result = trainEval(model, train_loader)
-        model.epoch_end(epoch, epochs, val_result, train_result)
-
-        epoch_validation_losses.append(val_result["val_loss"])
-        epoch_validation_accuracies.append(val_result["val_acc"])
-
-        if (epoch + 1) % 200 == 0:
-            for g in optimizer.param_groups:
-                lr *= 0.1
-                g['lr'] = lr
-
-    print("finished training")
-    return epoch_validation_losses, epoch_validation_accuracies
+    def save_if_best_model(self, current_acc, epoch, model, path):
+        if current_acc > self.acc:
+            self.acc, self.epoch, self.model = current_acc, epoch, model
+            print(f"\nSaving best model for epoch: {epoch + 1}\n")
+            torch.save({
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+            }, path)

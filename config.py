@@ -1,4 +1,9 @@
 # config.py
+import torch
+
+global DEVICE
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 global TEXT_ID
 global VIDEO_ID
 global AUDIO_ID
@@ -39,8 +44,8 @@ global CONTEXT_DROPOUT
 VIDEO_DROPOUT = 0.2
 AUDIO_DROPOUT = 0.2
 TEXT_DROPOUT = 0.2
+POST_FUSION_DROPOUT = 0.4
 SPEAKER_DROPOUT = 0.2
-POST_FUSION_DROPOUT = 0.2
 CONTEXT_DROPOUT = 0.2
 
 global TEXT_INIT_WEIGHT
@@ -57,14 +62,20 @@ SPEAKER_INIT_WEIGHT = 1.0
 global POST_FUSION_DIM
 POST_FUSION_DIM = 32
 
+global POST_FUSION_DIM_2
+POST_FUSION_DIM_2 = 16
+
 global LEARNING_RATE
 LEARNING_RATE = 5e-4
 
 global WEIGHT_DECAY
-WEIGHT_DECAY = 0.0
+WEIGHT_DECAY = 0.001
+
+global EPOCHS
+EPOCHS = 200
 
 global EARLY_STOPPING
-EARLY_STOPPING = 20
+EARLY_STOPPING = 50
 
 global DATA_PATH_JSON
 DATA_PATH_JSON = "data/sarcasm_data_mustard.json"
@@ -75,6 +86,9 @@ BERT_TARGET_EMBEDDINGS = "data/bert-output.jsonl"
 global BERT_CONTEXT_EMBEDDINGS
 BERT_CONTEXT_EMBEDDINGS = "data/bert-output-context.jsonl"
 
+global CLS_TOKEN_INDEX
+CLS_TOKEN_INDEX = 0
+
 global INDICES_FILE
 INDICES_FILE = "data/split_indices.p"
 
@@ -84,12 +98,11 @@ AUDIO_PICKLE = "data/audio_features.p"
 global BATCH_SIZE
 BATCH_SIZE = 32
 
-global MODEL_PATH
-MODEL_PATH= "saved/lfdnn-mustard-M.pth"
-
 global MODEL_NAME
 MODEL_NAME = 'weighted_fusion'
 
+global MODEL_PATH
+MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
+
 global RESULT_FILE
 RESULT_FILE = "output/{}.json"
-

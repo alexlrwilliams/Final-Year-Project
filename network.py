@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,27 +9,16 @@ from classifier import Classifier
 class Fusion(nn.Module):
     def __init__(self, modal_1, modal_2, modal_3):
         super(Fusion, self).__init__()
-        self.text_weight = nn.Linear(modal_1, 1)
-        self.audio_weight = nn.Linear(modal_2, 1)
-        self.visual_weight = nn.Linear(modal_3, 1)
+        self.weight_1 = nn.Parameter(torch.ones(1))
+        self.weight_2 = nn.Parameter(torch.ones(1))
+        self.weight_3 = nn.Parameter(torch.ones(1))
 
     def forward(self, modal_1, modal_2, modal_3):
-        dict = {0: modal_1, 1: modal_2, 2: modal_3}
+        modality_1 = modal_1 * self.weight_1
+        modality_2 = modal_2 * self.weight_2
+        modality_3 = modal_3 * self.weight_3
 
-        modal_1_w = self.text_weight(torch.tanh(modal_1))
-        modal_2_w = self.audio_weight(torch.tanh(modal_2))
-        modal_3_w = self.visual_weight(torch.tanh(modal_3))
-
-        weights = torch.cat([modal_1_w, modal_2_w, modal_3_w], -1)
-        normalised_weights = F.softmax(weights, -1)
-
-        output = [
-            np.multiply(
-                dict[i].detach().cpu(),
-                torch.index_select(normalised_weights, 1, torch.tensor([i])).detach().cpu()
-            ) for i in range(3)
-        ]
-        return torch.cat(output, dim=-1)
+        return torch.cat([modality_1, modality_2, modality_3], -1)
 
 class SubNet(nn.Module):
     def __init__(self, in_size, hidden_size, dropout):
@@ -67,11 +55,12 @@ class WeightedMultiModalFusionNetwork(Classifier):
 
         self.post_fusion_layer_1 = nn.Linear(config.TEXT_HIDDEN + config.VIDEO_HIDDEN + config.AUDIO_HIDDEN,
                                              config.POST_FUSION_DIM)
-        self.post_fusion_layer_2 = nn.Linear(config.POST_FUSION_DIM, config.POST_FUSION_DIM)
 
-        self.post_fusion_layer_3 = nn.Linear(config.POST_FUSION_DIM + config.SPEAKER_HIDDEN + config.CONTEXT_HIDDEN,
-                                             config.POST_FUSION_DIM)
-        self.fc = nn.Linear(config.POST_FUSION_DIM, 2)
+        self.post_fusion_layer_2 = nn.Linear(config.POST_FUSION_DIM, config.POST_FUSION_DIM_2)
+
+        self.post_fusion_layer_3 = nn.Linear(config.POST_FUSION_DIM_2 + config.SPEAKER_HIDDEN + config.CONTEXT_HIDDEN,
+                                             config.POST_FUSION_DIM_2)
+        self.fc = nn.Linear(config.POST_FUSION_DIM_2, 2)
 
     def forward(self, text_x, video_x, audio_x, speaker_x, context_x):
         video_h = self.video_subnet(video_x)
@@ -85,6 +74,9 @@ class WeightedMultiModalFusionNetwork(Classifier):
         x = self.post_fusion_dropout(fusion_h)
 
         x = F.relu(self.post_fusion_layer_1(x), inplace=True)
+
+        x = self.post_fusion_dropout(x)
+
         x = F.relu(self.post_fusion_layer_2(x), inplace=True)
 
         late_fusion = torch.cat([x, speaker_h, context_h], dim=-1)
@@ -92,5 +84,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
         x = self.post_fusion_dropout(late_fusion)
 
         x = F.relu(self.post_fusion_layer_3(x), inplace=True)
+
+        x = self.post_fusion_dropout(x)
 
         return self.fc(x)

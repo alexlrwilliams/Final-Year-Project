@@ -3,16 +3,12 @@ import os
 
 import numpy as np
 import torch
-import torch.nn as nn
 from sklearn.metrics import classification_report, confusion_matrix
-from torch import optim
-from torchsummary import summary
-from tqdm import tqdm
 
 import config
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
-from utils import get_author_ind
+from utils import get_author_ind, evaluate
 
 
 def five_fold(cur_time):
@@ -31,29 +27,22 @@ def five_fold(cur_time):
 
         # Initialize the model and move to the device
         model = WeightedMultiModalFusionNetwork(speakers_num)
-        model = model.to(device)
+        model = model.to(config.DEVICE)
 
-        summary(model,
-                [(config.TEXT_DIM,), (config.VIDEO_DIM,), (config.AUDIO_DIM,), (speakers_num,), (config.TEXT_DIM,)])
+        best_result = model.fit(train_loader, val_loader)
 
-        best_result = do_train(model, train_loader, val_loader)
+        model.load_state_dict(torch.load(config.MODEL_PATH)['model_state_dict'])
+        model.to(config.DEVICE)
 
-        print()
-        print(f'load:{config.MODEL_PATH}')
+        test_output = evaluate(model, test_loader)
+        print('Test: ', test_output['acc'])
 
-        model.load_state_dict(torch.load(config.MODEL_PATH))
-        model.to(device)
-
-        # do test
-        val_acc, y_pred, y_true = do_test(model, test_loader, mode="TEST")
-        print('Test: ', val_acc)
-
-        result_string = classification_report(y_true, y_pred, digits=3)
+        result_string = classification_report(test_output['true'], test_output['pred'], digits=3)
         print('confusion_matrix(y_true, y_pred)')
-        print(confusion_matrix(y_true, y_pred))
+        print(confusion_matrix(test_output['true'], test_output['pred']))
         print(result_string)
 
-        result_dict = classification_report(y_true, y_pred, digits=3, output_dict=True)
+        result_dict = classification_report(test_output['true'], test_output['pred'], digits=3, output_dict=True)
         result_dict['best_result'] = best_result
         results.append(result_dict)
 
@@ -93,91 +82,7 @@ def printResult(model_name, fold):
     }
 
 
-def do_test(model, data_loader, mode="VAL"):
-    criterion = nn.CrossEntropyLoss()
-    model.eval()
-    y_pred, y_true = [], []
-    eval_loss = 0.0
-    eval_acc = 0.0
-    with torch.no_grad():
-        with tqdm(data_loader) as td:
-            for batch_data in td:
-                val_loss, val_acc, outputs, labels = model.valStep(batch_data, device)
-
-                eval_loss += val_loss.item()
-                eval_acc += val_acc
-
-                y_pred.append(outputs.argmax(1).cpu())
-                y_true.append(labels.squeeze().long().cpu())
-
-    pred, true = torch.cat(y_pred), torch.cat(y_true)
-    eval_loss = eval_loss / len(pred)
-    eval_acc = eval_acc / len(pred)
-    print("%s-(%s) >> loss: %.4f acc: %.4f" % (mode, 'lf_dnn', eval_loss, eval_acc))
-
-    return eval_acc, pred, true
-
-
-def do_train(model, train_loader, val_loader):
-    best_acc = 0
-    epochs, best_epoch = 0, 0
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-    while True:
-        epochs += 1
-        y_pred, y_true = [], []
-        model.train()
-        train_loss = 0.0
-        train_acc = 0.0
-        with tqdm(train_loader) as td:
-            for batch_data in td:
-                optimizer.zero_grad()
-                loss, outputs, labels = model.trainStep(batch_data, device)
-
-                # backward
-                loss.backward()
-
-                # update
-                optimizer.step()
-
-                train_loss += loss.item()
-
-                train_acc += (outputs.argmax(1) == torch.squeeze(labels.long())).sum().item()
-
-                y_pred.append(outputs.argmax(1).cpu())
-                y_true.append(labels.squeeze().long().cpu())
-
-        pred, true = torch.cat(y_pred), torch.cat(y_true)
-
-        train_loss = train_loss / len(pred)
-
-        train_acc = train_acc / len(pred)
-
-        print("TRAIN-(%s) (%d/%d)>> loss: %.4f train_acc: %.4f" % (
-            'lf_dnn', epochs - best_epoch, epochs, train_loss, train_acc))
-
-        val_acc, _, _ = do_test(model, val_loader, mode="VAL")
-        if val_acc > best_acc:
-            best_acc, best_epoch = val_acc, epochs
-            print(config.MODEL_PATH)
-            if os.path.exists(config.MODEL_PATH):
-                os.remove(config.MODEL_PATH)
-            torch.save(model.cpu().state_dict(), config.MODEL_PATH)
-            model.to(device)
-
-        # early stop
-        if epochs - best_epoch >= config.EARLY_STOPPING:
-            print(f'the best epochs:{best_epoch},the best acc:{best_acc}')
-            tmp = {
-                'best_epoch': best_epoch,
-                'best_acc': best_acc
-            }
-            return tmp
-            # break
-
-
 five_results = []
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 for i in range(5):
     five_fold(i)
