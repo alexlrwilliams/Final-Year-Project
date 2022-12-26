@@ -50,24 +50,29 @@ def k_fold_cross_validation():
     return iteration_results
 
 
-five_results = []
+def main():
+    five_results = []
 
-for i in range(5):
-    iteration_results = k_fold_cross_validation()
-    tmp_dict = iteration_results.print_result()
-    five_results.append(tmp_dict)
+    for i in range(5):
+        iteration_results = k_fold_cross_validation()
+        tmp_dict = iteration_results.print_result()
+        five_results.append(tmp_dict)
 
-avg_precision = np.mean([result['precision'] for result in five_results])
-avg_recall = np.mean([result['recall'] for result in five_results])
-avg_f1_score = np.mean([result['f1_score'] for result in five_results])
+    avg_precision = np.mean([result['precision'] for result in five_results])
+    avg_recall = np.mean([result['recall'] for result in five_results])
+    avg_f1_score = np.mean([result['f1_score'] for result in five_results])
 
-print('five average: precision recall f1')
-print(round(avg_precision * 100, 1), round(avg_recall * 100, 1), round(avg_f1_score * 100, 1))
+    print('five average: precision recall f1')
+    print(round(avg_precision * 100, 1), round(avg_recall * 100, 1), round(avg_f1_score * 100, 1))
 
-file_name = 'five_results_average'
-with open(config.RESULT_FILE.format(file_name), 'w') as file:
-    json.dump({
-        'precision:': avg_precision,
-        'recall': avg_recall,
-        'f1': avg_f1_score
-    }, file)
+    file_name = 'five_results_average'
+    with open(config.RESULT_FILE.format(file_name), 'w') as file:
+        json.dump({
+            'precision:': avg_precision,
+            'recall': avg_recall,
+            'f1': avg_f1_score
+        }, file)
+
+
+if __name__ == '__main__':
+    main()
