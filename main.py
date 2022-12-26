@@ -50,36 +50,11 @@ def k_fold_cross_validation():
     return iteration_results
 
 
-def print_result(results):
-    for i, result in enumerate(results):
-        print("Fold ", i + 1)
-        print("Weighted Precision: {}  Weighted Recall: {}  Weighted F score: {}".format(
-            result.precision,
-            result.recall,
-            result.f1_score))
-        print(f'best_epoch:{result.best_epoch}, best_acc:{result.best_acc}')
-
-    avg_precision = np.mean([result.precision for result in results])
-    avg_recall = np.mean([result.recall for result in results])
-    avg_f1_score = np.mean([result.f1_score for result in results])
-
-    print("#" * 20)
-    print("Avg :")
-    print("Weighted Precision: {:.3f}  Weighted Recall: {:.3f}  Weighted F score: {:.3f}".format(
-        avg_precision, avg_recall, avg_f1_score))
-
-    return {
-        'precision': avg_precision,
-        'recall': avg_recall,
-        'f1': avg_f1_score
-    }
-
-
 five_results = []
 
 for i in range(5):
     iteration_results = k_fold_cross_validation()
-    tmp_dict = print_result(iteration_results.fold_results)
+    tmp_dict = iteration_results.print_result()
     five_results.append(tmp_dict)
 
 avg_precision = np.mean([result['precision'] for result in five_results])
