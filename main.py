@@ -8,7 +8,7 @@ import config
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
 from results import Result, IterationResults
-from utils import get_author_ind, evaluate
+from utils import get_author_ind
 
 
 def k_fold_cross_validation():
@@ -34,7 +34,7 @@ def k_fold_cross_validation():
         model.load_state_dict(torch.load(config.MODEL_PATH)['model_state_dict'])
         model.to(config.DEVICE)
 
-        test_output = evaluate(model, test_loader)
+        test_output = model.evaluate(test_loader)
         print('Test: ', test_output['acc'])
 
         result_string = classification_report(test_output['true'], test_output['pred'], digits=3)

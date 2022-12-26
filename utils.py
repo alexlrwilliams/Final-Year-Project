@@ -3,7 +3,6 @@ import sys
 
 import numpy as np
 import torch
-import tqdm
 
 import config
 
@@ -48,34 +47,6 @@ def toOneHot(data, size=None):
 
 def accuracy(output, labels):
     return (output.argmax(1) == torch.squeeze(labels.long())).sum().item()
-
-
-def evaluate(model, data_loader):
-    model.eval()
-    y_pred, y_true = [], []
-    eval_loss = 0.0
-    eval_acc = 0.0
-    with torch.no_grad():
-        with tqdm.tqdm(data_loader) as td:
-            for batch_data in td:
-                val_loss, val_acc, outputs, labels = model.step(batch_data)
-
-                eval_loss += val_loss.item()
-                eval_acc += val_acc
-
-                y_pred.append(outputs.argmax(1).cpu())
-                y_true.append(labels.squeeze().long().cpu())
-
-    pred, true = torch.cat(y_pred), torch.cat(y_true)
-    eval_loss = eval_loss / len(pred)
-    eval_acc = eval_acc / len(pred)
-
-    return {
-        'loss': eval_loss,
-        'acc': eval_acc,
-        'pred': pred,
-        'true': true
-    }
 
 
 class SaveBestModel:

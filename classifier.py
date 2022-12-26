@@ -4,7 +4,7 @@ from torch import optim
 from tqdm import tqdm
 
 import config
-from utils import accuracy, SaveBestModel, evaluate
+from utils import accuracy, SaveBestModel
 
 
 def extract_data(data):
@@ -34,8 +34,9 @@ class Classifier(torch.nn.Module):
     def fit(self, train_loader, val_loader):
         optimizer = optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
         best_model = SaveBestModel()
+        self.train()
+
         for epoch in range(config.EPOCHS):
-            self.train()
 
             with tqdm(train_loader) as td:
                 for batch_data in td:
@@ -45,11 +46,11 @@ class Classifier(torch.nn.Module):
                     optimizer.step()
 
             # Validation phase
-            val_result = evaluate(self, val_loader)
+            val_result = self.evaluate(val_loader)
             best_model.save_if_best_model(val_result["acc"], epoch, self, config.MODEL_PATH)
 
             if (epoch + 1) % 10 == 0:
-                train_result = evaluate(self, train_loader)
+                train_result = self.evaluate(train_loader)
                 self.epoch_end(epoch, config.EPOCHS, val_result, train_result)
 
             if (epoch - best_model.epoch) >= config.EARLY_STOPPING:
@@ -59,4 +60,31 @@ class Classifier(torch.nn.Module):
         return {
             'best_epoch': best_model.epoch,
             'best_acc': best_model.acc
+        }
+
+    def evaluate(self, data_loader):
+        self.eval()
+        y_pred, y_true = [], []
+        eval_loss = 0.0
+        eval_acc = 0.0
+        with torch.no_grad():
+            with tqdm(data_loader) as td:
+                for batch_data in td:
+                    val_loss, val_acc, outputs, labels = self.step(batch_data)
+
+                    eval_loss += val_loss.item()
+                    eval_acc += val_acc
+
+                    y_pred.append(outputs.argmax(1).cpu())
+                    y_true.append(labels.squeeze().long().cpu())
+
+        pred, true = torch.cat(y_pred), torch.cat(y_true)
+        eval_loss = eval_loss / len(pred)
+        eval_acc = eval_acc / len(pred)
+
+        return {
+            'loss': eval_loss,
+            'acc': eval_acc,
+            'pred': pred,
+            'true': true
         }
