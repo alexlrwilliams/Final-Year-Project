@@ -5,9 +5,9 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix
 
 import config
-from Results import Result, IterationResults
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
+from results import Result, IterationResults
 from utils import get_author_ind, evaluate
 
 
