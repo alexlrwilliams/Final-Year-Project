@@ -56,11 +56,11 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.post_fusion_layer_1 = nn.Linear(config.TEXT_HIDDEN + config.VIDEO_HIDDEN + config.AUDIO_HIDDEN,
                                              config.POST_FUSION_DIM)
 
-        self.post_fusion_layer_2 = nn.Linear(config.POST_FUSION_DIM, config.POST_FUSION_DIM_2)
+        self.post_fusion_layer_2 = nn.Linear(config.POST_FUSION_DIM, config.POST_FUSION_DIM)
 
-        self.post_fusion_layer_3 = nn.Linear(config.POST_FUSION_DIM_2 + config.SPEAKER_HIDDEN + config.CONTEXT_HIDDEN,
-                                             config.POST_FUSION_DIM_2)
-        self.fc = nn.Linear(config.POST_FUSION_DIM_2, 2)
+        self.post_fusion_layer_3 = nn.Linear(config.POST_FUSION_DIM + config.SPEAKER_HIDDEN + config.CONTEXT_HIDDEN,
+                                             config.POST_FUSION_DIM)
+        self.fc = nn.Linear(config.POST_FUSION_DIM, 2)
 
     def forward(self, text_x, video_x, audio_x, speaker_x, context_x):
         video_h = self.video_subnet(video_x)

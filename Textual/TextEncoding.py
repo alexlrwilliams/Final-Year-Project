@@ -5,10 +5,10 @@ import config
 from config import BERT_TARGET_EMBEDDINGS, BERT_CONTEXT_EMBEDDINGS
 
 
-def get_bert_encoding():
-    text_bert_embeddings = []
+def read_embeddings(target_embedding_file):
+    embeddings = []
 
-    with jsonlines.open(BERT_TARGET_EMBEDDINGS) as reader:
+    with jsonlines.open(target_embedding_file) as reader:
         for obj in reader:
             features = obj['features'][config.CLS_TOKEN_INDEX]
             bert_embedding_target = []
@@ -16,23 +16,21 @@ def get_bert_encoding():
                 bert_embedding_target.append(np.array(features["layers"][layer]["values"]))
 
             bert_embedding_target = np.mean(bert_embedding_target, axis=0)
-            text_bert_embeddings.append(np.copy(bert_embedding_target))
-    return text_bert_embeddings
+            embeddings.append(np.copy(bert_embedding_target))
+
+    return embeddings
+
+
+def get_bert_encoding():
+    return read_embeddings(BERT_TARGET_EMBEDDINGS)
+
 
 def get_context_bert_encoding(dataset):
     length = []
     for idx, ID in enumerate(dataset.keys()):
         length.append(len(dataset[ID]["context"]))
-    with jsonlines.open(BERT_CONTEXT_EMBEDDINGS) as reader:
-        context_utterance_embeddings = []
-        # Visit each context utterance
-        for obj in reader:
-            features = obj['features'][config.CLS_TOKEN_INDEX]
-            bert_embedding_target = []
-            for layer in [0, 1, 2, 3]:
-                bert_embedding_target.append(np.array(features["layers"][layer]["values"]))
-            bert_embedding_target = np.mean(bert_embedding_target, axis=0)
-            context_utterance_embeddings.append(np.copy(bert_embedding_target))
+
+    context_utterance_embeddings = read_embeddings(BERT_CONTEXT_EMBEDDINGS)
 
     # Checking whether total context features == total context sentences
     assert (len(context_utterance_embeddings) == sum(length))

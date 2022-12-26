@@ -26,15 +26,6 @@ class Classifier(torch.nn.Module):
         loss = F.cross_entropy(output, labels.squeeze())
         return loss, acc, output, labels
 
-    def train_epoch_end(self, outputs):
-        for x in outputs:
-            losses = [x['loss']]
-            accs = [x['acc']]
-        epoch_loss = torch.stack(losses).mean()
-        epoch_acc = torch.stack(accs).mean()
-
-        return {'loss': epoch_loss.item(), 'acc': epoch_acc.item()}
-
     def epoch_end(self, epoch, max_epochs, val_result, result):
         print("Epoch [{}/{}], loss: {:.4f}, acc: {:.4f} val_loss: {:.4f}, val_acc: {:.4f}".format(
             epoch + 1, max_epochs, result['loss'], result['acc'], val_result['loss'], val_result['acc']

@@ -1,19 +1,19 @@
 import json
-import os
 
 import numpy as np
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 
 import config
+from Results import Result, IterationResults
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
 from utils import get_author_ind, evaluate
 
 
-def five_fold(cur_time):
-    results = []
+def k_fold_cross_validation():
     dataloader_gen = MultiModalDataLoader()
+    iteration_results = IterationResults()
 
     for fold, (train_index, test_index) in enumerate(dataloader_gen.split_indices):
         print('-' * 25, " Fold ", fold, '-' * 25)
@@ -44,75 +44,55 @@ def five_fold(cur_time):
 
         result_dict = classification_report(test_output['true'], test_output['pred'], digits=3, output_dict=True)
         result_dict['best_result'] = best_result
-        results.append(result_dict)
 
-    model_name = config.MODEL_NAME + str(cur_time)
-    if not os.path.exists(os.path.dirname(config.RESULT_FILE)):
-        os.makedirs(os.path.dirname(config.RESULT_FILE))
-    with open(config.RESULT_FILE.format(model_name), 'w') as file:
-        json.dump(results, file)
-    print('dump results  into ', config.RESULT_FILE.format(model_name))
+        result = Result(result_dict)
+        iteration_results.add_result(result)
+    return iteration_results
 
-def printResult(model_name, fold):
-    results = json.load(open(config.RESULT_FILE.format(model_name+str(fold)), "rb"))
-    weighted_precision, weighted_recall = [], []
-    weighted_fscores = []
-    print("#" * 20)
-    for fold, result in enumerate(results):
-        weighted_fscores.append(result["weighted avg"]["f1-score"])
-        weighted_precision.append(result["weighted avg"]["precision"])
-        weighted_recall.append(result["weighted avg"]["recall"])
-        print("Fold {}:".format(fold + 1))
+
+def print_result(results):
+    for i, result in enumerate(results):
+        print("Fold ", i + 1)
         print("Weighted Precision: {}  Weighted Recall: {}  Weighted F score: {}".format(
-            result["weighted avg"]["precision"],
-            result["weighted avg"]["recall"],
-            result["weighted avg"]["f1-score"]))
-        print(f'best_epoch:{result["best_result"]["best_epoch"]}   best_acc:{result["best_result"]["best_acc"]}')
+            result.precision,
+            result.recall,
+            result.f1_score))
+        print(f'best_epoch:{result.best_epoch}, best_acc:{result.best_acc}')
+
+    avg_precision = np.mean([result.precision for result in results])
+    avg_recall = np.mean([result.recall for result in results])
+    avg_f1_score = np.mean([result.f1_score for result in results])
+
     print("#" * 20)
     print("Avg :")
     print("Weighted Precision: {:.3f}  Weighted Recall: {:.3f}  Weighted F score: {:.3f}".format(
-        np.mean(weighted_precision),
-        np.mean(weighted_recall),
-        np.mean(weighted_fscores)))
+        avg_precision, avg_recall, avg_f1_score))
 
     return {
-        'precision': np.mean(weighted_precision),
-        'recall': np.mean(weighted_recall),
-        'f1': np.mean(weighted_fscores)
+        'precision': avg_precision,
+        'recall': avg_recall,
+        'f1': avg_f1_score
     }
 
 
 five_results = []
 
 for i in range(5):
-    five_fold(i)
-    tmp_dict = printResult(model_name=config.MODEL_NAME, fold = i)
+    iteration_results = k_fold_cross_validation()
+    tmp_dict = print_result(iteration_results.fold_results)
     five_results.append(tmp_dict)
 
-file_name = 'five_results'
-with open(config.RESULT_FILE.format(file_name), 'w') as file:
-    json.dump(five_results, file)
-print('dump results into ', config.RESULT_FILE.format(file_name))
-
-results = json.load(open(config.RESULT_FILE.format(file_name), "rb"))
-precisions, recalls, f1s = [], [], []
-for fold, result in enumerate(results):
-    tmp1 = result['precision']
-    tmp2 = result['recall']
-    tmp3 = result['f1']
-    precisions.append(tmp1)
-    recalls.append(tmp2)
-    f1s.append(tmp3)
+avg_precision = np.mean([result['precision'] for result in five_results])
+avg_recall = np.mean([result['recall'] for result in five_results])
+avg_f1_score = np.mean([result['f1_score'] for result in five_results])
 
 print('five average: precision recall f1')
-print(round(np.mean(precisions) * 100, 1), round(np.mean(recalls) * 100, 1), round(np.mean(f1s) * 100, 1))
-
-tmp = {
-    'precision:': np.mean(precisions),
-    'recall': np.mean(recalls),
-    'f1': np.mean(f1s)
-}
+print(round(avg_precision * 100, 1), round(avg_recall * 100, 1), round(avg_f1_score * 100, 1))
 
 file_name = 'five_results_average'
 with open(config.RESULT_FILE.format(file_name), 'w') as file:
-    json.dump(tmp, file)
+    json.dump({
+        'precision:': avg_precision,
+        'recall': avg_recall,
+        'f1': avg_f1_score
+    }, file)

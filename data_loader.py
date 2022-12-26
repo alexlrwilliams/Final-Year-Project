@@ -36,9 +36,9 @@ class MultiModalDataLoader:
 
         video_features_file.close()
 
-        splits = 5
-        skf = StratifiedKFold(n_splits=splits, shuffle=True)
-        split_indices = [(train_index, test_index) for train_index, test_index in skf.split(self.data_input, self.data_output)]
+        skf = StratifiedKFold(n_splits=config.SPLITS, shuffle=True)
+        split_indices = [(train_index, test_index) for train_index, test_index in
+                         skf.split(self.data_input, self.data_output)]
 
         if not os.path.exists(config.INDICES_FILE):
             pickle.dump(split_indices, open(config.INDICES_FILE, 'wb'), protocol=2)
@@ -47,7 +47,6 @@ class MultiModalDataLoader:
 
     def parseData(self, text, video, audio, context):
         for idx, ID in enumerate(self.dataset_json.keys()):
-            # print(idx, 'processing ... ', ID) 0 proc`essing ...  1_60
             self.data_input.append(
                 (text[idx],  # 0 TEXT_ID
                  video[ID][()],  # 1 VIDEO_ID

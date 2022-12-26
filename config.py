@@ -4,6 +4,9 @@ import torch
 global DEVICE
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+global SPLITS
+SPLITS = 10
+
 global TEXT_ID
 global VIDEO_ID
 global AUDIO_ID
@@ -61,9 +64,6 @@ SPEAKER_INIT_WEIGHT = 1.0
 
 global POST_FUSION_DIM
 POST_FUSION_DIM = 32
-
-global POST_FUSION_DIM_2
-POST_FUSION_DIM_2 = 16
 
 global LEARNING_RATE
 LEARNING_RATE = 5e-4
