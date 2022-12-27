@@ -89,9 +89,6 @@ BERT_CONTEXT_EMBEDDINGS = "data/bert-output-context.jsonl"
 global CLS_TOKEN_INDEX
 CLS_TOKEN_INDEX = 0
 
-global INDICES_FILE
-INDICES_FILE = "data/split_indices.p"
-
 global AUDIO_PICKLE
 AUDIO_PICKLE = "data/audio_features.p"
 

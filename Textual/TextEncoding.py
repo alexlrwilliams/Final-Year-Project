@@ -1,3 +1,5 @@
+from typing import List
+
 import jsonlines
 import numpy as np
 
@@ -5,7 +7,14 @@ import config
 from config import BERT_TARGET_EMBEDDINGS, BERT_CONTEXT_EMBEDDINGS
 
 
-def read_embeddings(target_embedding_file):
+def read_embeddings(target_embedding_file: str) -> List[np.ndarray]:
+    """
+        Read the bert text embeddings from a certain file path
+
+        :param target_embedding_file: A string pointing to the path of the file
+
+        :return: list of bert embeddings from file
+    """
     embeddings = []
 
     with jsonlines.open(target_embedding_file) as reader:
@@ -21,11 +30,21 @@ def read_embeddings(target_embedding_file):
     return embeddings
 
 
-def get_bert_encoding():
+def get_bert_encoding() -> List[np.ndarray]:
+    """
+        Read the bert text embeddings
+
+        :return: list of bert embeddings from file
+    """
     return read_embeddings(BERT_TARGET_EMBEDDINGS)
 
 
-def get_context_bert_encoding(dataset):
+def get_context_bert_encoding(dataset) -> List[list]:
+    """
+        Read the bert context embeddings
+
+        :return: list of context bert features
+    """
     length = []
     for idx, ID in enumerate(dataset.keys()):
         length.append(len(dataset[ID]["context"]))

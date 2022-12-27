@@ -70,7 +70,7 @@ def main():
         json.dump({
             'precision:': avg_precision,
             'recall': avg_recall,
-            'f1': avg_f1_score
+            'f1_score': avg_f1_score
         }, file)
 
 

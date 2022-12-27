@@ -1,13 +1,17 @@
+from typing import Any, Tuple, Dict, Union, Optional
+
 import torch
 import torch.nn.functional as F
-from torch import optim
+from torch import optim, Tensor
+from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import config
 from utils import accuracy, SaveBestModel
 
 
-def extract_data(data):
+def extract_data(data: Dict[str, Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     return \
         data['vision'].to(config.DEVICE), \
             data['audio'].to(config.DEVICE), \
@@ -17,8 +21,25 @@ def extract_data(data):
             data['labels'].to(config.DEVICE)
 
 
+def epoch_end(epoch: int, max_epochs: int, val_result: Dict[str, Any], result: Dict[str, Any]) -> None:
+    print("Epoch [{}/{}], loss: {:.4f}, acc: {:.4f} val_loss: {:.4f}, val_acc: {:.4f}".format(
+        epoch + 1, max_epochs, result['loss'], result['acc'], val_result['loss'], val_result['acc']
+    ))
+
+
 class Classifier(torch.nn.Module):
-    def step(self, data):
+    """
+        A classifier which the network inherits from, defines standard training and evaluating functions
+    """
+
+    def step(self, data: Dict[str, Tensor]) -> Tuple[Tensor, float, Tensor, Tensor]:
+        """
+            Pass input through model and calculate loss and accuracy
+
+            :param data: input data from dataloader
+
+            :return: loss, accuracy, outputs and labels
+        """
         vision, audio, text, context, speaker, labels = extract_data(data)
 
         output = self(text, vision, audio, speaker, context)
@@ -26,13 +47,20 @@ class Classifier(torch.nn.Module):
         loss = F.cross_entropy(output, labels.squeeze())
         return loss, acc, output, labels
 
-    def epoch_end(self, epoch, max_epochs, val_result, result):
-        print("Epoch [{}/{}], loss: {:.4f}, acc: {:.4f} val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch + 1, max_epochs, result['loss'], result['acc'], val_result['loss'], val_result['acc']
-        ))
+    def fit(self, train_loader: DataLoader, val_loader: DataLoader,
+            optimizer: Optional[Optimizer] = None) -> Dict[str, Union[int, float]]:
+        """
+            Use gradient descent with the adam optimiser and backpropagation to train the model
 
-    def fit(self, train_loader, val_loader):
-        optimizer = optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+            :param optimizer: optional optimiser, defaults to Adam
+            :param val_loader: the validation set dataloader
+            :param train_loader: the training set dataloader
+
+            :return: best accuracy and its epoch
+        """
+        if optimizer is None:
+            optimizer = optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+
         best_model = SaveBestModel()
         self.train()
 
@@ -51,7 +79,7 @@ class Classifier(torch.nn.Module):
 
             if (epoch + 1) % 10 == 0:
                 train_result = self.evaluate(train_loader)
-                self.epoch_end(epoch, config.EPOCHS, val_result, train_result)
+                epoch_end(epoch, config.EPOCHS, val_result, train_result)
 
             if (epoch - best_model.epoch) >= config.EARLY_STOPPING:
                 break
@@ -62,7 +90,14 @@ class Classifier(torch.nn.Module):
             'best_acc': best_model.acc
         }
 
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader: DataLoader) -> Dict[str, Union[float, Tensor]]:
+        """
+            Use gradient descent with the adam optimiser and backpropagation to train the model
+
+            :param data_loader: the dataloader used to evaluate loss and accuracy
+
+            :return: loss, accuracy, predictions, true values
+        """
         self.eval()
         y_pred, y_true = [], []
         eval_loss = 0.0

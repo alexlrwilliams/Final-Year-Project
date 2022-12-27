@@ -1,21 +1,21 @@
 import json
-import os
-import pickle
+from typing import List, Dict, Any
 
 import h5py
 import numpy as np
+from h5py import File
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader
 
 import config
 from Textual.TextEncoding import get_bert_encoding, get_context_bert_encoding
 from dataset import MultiModalDataset
-from utils import pickle_loader, toOneHot
+from utils import pickle_loader, to_one_hot, get_data
 
 
 class MultiModalDataLoader:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.dataset_json = json.load(open(config.DATA_PATH_JSON, encoding="utf-8"))
 
         self.data_input, self.data_output = [], []
@@ -32,20 +32,23 @@ class MultiModalDataLoader:
         # audio
         audio_features = pickle_loader(config.AUDIO_PICKLE)
 
-        self.parseData(text_bert_embeddings, video_features_file, audio_features, context_bert_embeddings)
+        self.parse_data(text_bert_embeddings, video_features_file, audio_features, context_bert_embeddings)
 
         video_features_file.close()
 
         skf = StratifiedKFold(n_splits=config.SPLITS, shuffle=True)
-        split_indices = [(train_index, test_index) for train_index, test_index in
-                         skf.split(self.data_input, self.data_output)]
+        self.split_indices = [(train_index, test_index) for train_index, test_index in
+                              skf.split(self.data_input, self.data_output)]
 
-        if not os.path.exists(config.INDICES_FILE):
-            pickle.dump(split_indices, open(config.INDICES_FILE, 'wb'), protocol=2)
+    def parse_data(self, text: List[np.ndarray], video: File, audio: Any, context: List[list]) -> None:
+        """
+        parse pretrained data into array of modalities for input to data loader
 
-        self.split_indices = pickle_loader(config.INDICES_FILE)
-
-    def parseData(self, text, video, audio, context):
+        :param context: context bert embeddings
+        :param audio: audio features
+        :param video: video features
+        :param text: utterance bert embeddings
+        """
         for idx, ID in enumerate(self.dataset_json.keys()):
             self.data_input.append(
                 (text[idx],  # 0 TEXT_ID
@@ -57,36 +60,40 @@ class MultiModalDataLoader:
                  ))
             self.data_output.append(int(self.dataset_json[ID]["sarcasm"]))
 
-    def get_data_loader(self, train_ind_SI, author_ind):
+    def get_data_loader(self, train_ind_si: List[int], author_ind: Dict[str, int]) -> DataLoader:
+        """
+        Get Data Loader for a specific set of indices
 
-        train_input = [self.data_input[ind] for ind in train_ind_SI]
+        :param train_ind_si: Array of indices for train data
+        :param author_ind: Dictionary of all speakers and their corresponding indices
 
-        train_out = np.array([self.data_output[ind] for ind in train_ind_SI])
+        :return: Dataloader for specific set of indices in data input from dataset
+        """
+        train_input = [self.data_input[ind] for ind in train_ind_si]
+
+        train_out = np.array([self.data_output[ind] for ind in train_ind_si])
         train_out = np.expand_dims(train_out, axis=1)
 
-        def getData(ID=None):
-            return [instance[ID] for instance in train_input]
-
         # Text Feature
-        train_text_feature = getData(config.TEXT_ID)
+        train_text_feature = get_data(config.TEXT_ID, train_input)
 
         # video Feature
-        train_video_feature = getData(config.VIDEO_ID)
+        train_video_feature = get_data(config.VIDEO_ID, train_input)
         train_video_feature_mean = np.array([np.mean(feature_vector, axis=0) for feature_vector in train_video_feature])
 
         # audio Feature
-        audio = getData(config.AUDIO_ID)
+        audio = get_data(config.AUDIO_ID, train_input)
         # (552, 283)
 
         train_audio_feature = np.array([np.mean(feature_vector, axis=1) for feature_vector in audio])
 
         # speaker feature
-        speakers = getData(config.SPEAKER_ID)
+        speakers = get_data(config.SPEAKER_ID, train_input)
         speakers = [author_ind.get(person.strip(), author_ind["PERSON"]) for person in speakers]
-        speaker_feature = toOneHot(speakers, len(author_ind))
+        speaker_feature = to_one_hot(speakers, len(author_ind))
 
         # context feature
-        context_utterances = getData(config.CONTEXT_ID)
+        context_utterances = get_data(config.CONTEXT_ID, train_input)
         mean_features = []
         for utterance in context_utterances:
             mean_features.append(np.mean(utterance, axis=0))
