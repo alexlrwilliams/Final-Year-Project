@@ -1,6 +1,17 @@
 # config.py
 import torch
 
+global USE_TEXT
+USE_TEXT = True
+global USE_CONTEXT
+USE_CONTEXT = True
+global USE_SPEAKER
+USE_SPEAKER = True
+global USE_AUDIO
+USE_AUDIO = False
+global USE_VISUAL
+USE_VISUAL = False
+
 global DEVICE
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -23,7 +34,7 @@ CONTEXT_ID = 5
 global TEXT_DIM
 global VIDEO_DIM
 global AUDIO_DIM
-TEXT_DIM = 768
+TEXT_DIM = 1024
 VIDEO_DIM = 2048
 AUDIO_DIM = 283
 
@@ -51,19 +62,14 @@ POST_FUSION_DROPOUT = 0.4
 SPEAKER_DROPOUT = 0.2
 CONTEXT_DROPOUT = 0.2
 
-global TEXT_INIT_WEIGHT
-global VIDEO_INIT_WEIGHT
-global AUDIO_INIT_WEIGHT
-global SPEAKER_INIT_WEIGHT
-global CONTEXT_INIT_WEIGHT
-TEXT_INIT_WEIGHT = 1.0
-VIDEO_INIT_WEIGHT = 1.0
-AUDIO_INIT_WEIGHT = 1.0
-CONTEXT_INIT_WEIGHT = 1.0
-SPEAKER_INIT_WEIGHT = 1.0
+global POST_FUSION_DIM_1
+POST_FUSION_DIM_1 = 512
 
-global POST_FUSION_DIM
-POST_FUSION_DIM = 32
+global POST_FUSION_DIM_2
+POST_FUSION_DIM_2 = 256
+
+global POST_FUSION_DIM_3
+POST_FUSION_DIM_3 = 128
 
 global LEARNING_RATE
 LEARNING_RATE = 5e-4
@@ -77,17 +83,14 @@ EPOCHS = 200
 global EARLY_STOPPING
 EARLY_STOPPING = 50
 
-global DATA_PATH_JSON
-DATA_PATH_JSON = "data/sarcasm_data_mustard.json"
+global DATA_PATH
+DATA_PATH = "data/extended_dataset.csv"
 
-global BERT_TARGET_EMBEDDINGS
-BERT_TARGET_EMBEDDINGS = "data/bert-output.jsonl"
+global BART_TARGET_EMBEDDINGS
+BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
 
-global BERT_CONTEXT_EMBEDDINGS
-BERT_CONTEXT_EMBEDDINGS = "data/bert-output-context.jsonl"
-
-global CLS_TOKEN_INDEX
-CLS_TOKEN_INDEX = 0
+global BART_CONTEXT_EMBEDDINGS
+BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
 
 global AUDIO_PICKLE
 AUDIO_PICKLE = "data/audio_features.p"

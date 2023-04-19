@@ -13,11 +13,11 @@ from utils import accuracy, SaveBestModel
 
 def extract_data(data: Dict[str, Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     return \
-        data['vision'].to(config.DEVICE), \
-            data['audio'].to(config.DEVICE), \
-            data['text'].to(config.DEVICE), \
-            data['context'].to(config.DEVICE), \
-            data['speaker'].to(config.DEVICE), \
+        data['vision'].to(config.DEVICE) if config.USE_VISUAL else None, \
+            data['audio'].to(config.DEVICE) if config.USE_AUDIO else None, \
+            data['text'].to(config.DEVICE) if config.USE_TEXT else None, \
+            data['context'].to(config.DEVICE) if config.USE_CONTEXT else None, \
+            data['speaker'].to(config.DEVICE) if config.USE_SPEAKER else None, \
             data['labels'].to(config.DEVICE)
 
 
@@ -67,6 +67,7 @@ class Classifier(torch.nn.Module):
         for epoch in range(config.EPOCHS):
 
             with tqdm(train_loader) as td:
+                print(td)
                 for batch_data in td:
                     optimizer.zero_grad()
                     loss, _, _, _ = self.step(batch_data)
