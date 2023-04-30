@@ -67,7 +67,6 @@ class Classifier(torch.nn.Module):
         for epoch in range(config.EPOCHS):
 
             with tqdm(train_loader) as td:
-                print(td)
                 for batch_data in td:
                     optimizer.zero_grad()
                     loss, _, _, _ = self.step(batch_data)
@@ -77,7 +76,7 @@ class Classifier(torch.nn.Module):
             # Validation phase
             val_result = self.evaluate(val_loader)
             best_model.save_if_best_model(val_result["acc"], epoch, self, config.MODEL_PATH)
-
+ 
             if (epoch + 1) % 10 == 0:
                 train_result = self.evaluate(train_loader)
                 epoch_end(epoch, config.EPOCHS, val_result, train_result)
