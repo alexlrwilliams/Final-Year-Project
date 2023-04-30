@@ -11,7 +11,9 @@ class SingleModalityFusion(nn.Module):
     """
         Produce a pytorch neural network module used for multi-modal fusion
         Attributes:
-            weight_{1-3} - Weights used to control the impact of each modality
+            n_speaker - Number of speakers
+            input_embedding_a - size of imbedded feature vector
+            output - size of output
     """
 
     def __init__(self, n_speaker: int, input_embedding_a: int, output: int) -> None:
