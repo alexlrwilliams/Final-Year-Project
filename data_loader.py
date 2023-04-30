@@ -17,7 +17,7 @@ import pandas as pd
 class MultiModalDataLoader:
 
     def __init__(self) -> None:
-        self.dataset = pd.read_csv(config.DATA_PATH)
+        self.dataset = pd.read_csv(config.DATA_PATH, encoding = "ISO-8859-1")
 
         self.utterances = self.dataset[self.dataset['Sarcasm'].notna()]
 

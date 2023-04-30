@@ -27,7 +27,7 @@ def extract_bart_embeddings(df, column_name):
   return torch.cat(embeddings, dim=0)
 
 if __name__ == '__main__':
-    df = pd.read_csv(FILE_PATH)
+    df = pd.read_csv(FILE_PATH, encoding = "ISO-8859-1")
     utterances = df[df['Sarcasm'].notna()]
     context = df[df['Sarcasm'].isna()]
 
