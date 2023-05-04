@@ -7,12 +7,11 @@ from config import CONFIG
 from classifier import Classifier
 
 class ModalityFusion(nn.Module):
-    def __init__(self, n_speaker: int, input_embedding_a: int, context_embedding: int, output: int) -> None:
+    def __init__(self, n_speaker: int, input_embedding_a: int, output: int) -> None:
         super(ModalityFusion, self).__init__()
 
         self.n_speaker = n_speaker
         self.input_embedding_A = input_embedding_a
-        self.context_embedding = context_embedding
         self.shared_embedding = 1024
         self.projection_embedding = 512
         self.dropout = 0.5
@@ -37,50 +36,6 @@ class ModalityFusion(nn.Module):
         input = torch.cat((featureA, featureB), dim=1)
         return nn.functional.softmax(self.collaborative_gate_1(input), dim=1)
 
-class DoubleModalityFusion(ModalityFusion):
-    def __init__(self, n_speaker: int, input_embedding_a: int, input_embedding_b: int, context_embedding: int, output: int) -> None:
-        super(DoubleModalityFusion, self).__init__(n_speaker, input_embedding_a, context_embedding, output)
-
-        self.input_embedding_B = input_embedding_b
-
-        self.B_context_share = nn.Linear(self.input_embedding_B, self.shared_embedding)
-        self.B_utterance_share = nn.Linear(self.input_embedding_B, self.shared_embedding)
-
-        self.norm_B_context = nn.BatchNorm1d(self.shared_embedding)
-        self.norm_B_utterance = nn.BatchNorm1d(self.shared_embedding)
-
-    def attention_aggregator(self, feA, feB, feC, feD):
-        """ This method caluates the attention for feA with respect to others"""
-        input = self.attention(feA, feB) + self.attention(feA,
-                                                          feC) + self.attention(feA, feD)
-        # here we call for pairwise attention
-        return nn.functional.softmax(self.collabrative_gate_2(input), dim=1)
-
-    def forward(self, uA, cA, uB, cB, speaker_embedding):
-        """making Feature Projection in order to make all feature of same dimension"""
-
-        shared_A_context = self.norm_A_context(
-            nn.functional.relu(self.A_context_share(cA)))
-        shared_A_utterance = self.norm_A_utterance(
-            nn.functional.relu(self.A_utterance_share(uA)))
-
-        shared_B_context = self.norm_B_context(
-            nn.functional.relu(self.B_context_share(cB)))
-        shared_B_utterance = self.norm_B_utterance(
-            nn.functional.relu(self.B_utterance_share(uB)))
-
-        updated_shared_A = shared_A_utterance * self.attention_aggregator(
-            shared_A_utterance, shared_A_context, shared_B_context, shared_B_utterance)
-
-        updated_shared_B = shared_B_utterance * self.attention_aggregator(
-            shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance)
-
-        input = torch.cat((updated_shared_A, updated_shared_B), dim=1)
-
-        input = torch.cat((input, speaker_embedding), dim=1)
-
-        return self.final_layer(input)
-
 class SingleModalityFusion(ModalityFusion):
     """
         Produce a pytorch neural network module used for multi-modal fusion
@@ -90,13 +45,13 @@ class SingleModalityFusion(ModalityFusion):
             output - size of output
     """
 
-    def __init__(self, n_speaker: int, input_embedding_A: int, context_embedding: int, output: int) -> None:
+    def __init__(self, n_speaker: int, input_embedding_A: int, output: int) -> None:
         """
             Initializes internal ModalityFusion state
         """
-        super(SingleModalityFusion, self).__init__(n_speaker, input_embedding_A, context_embedding, output)
+        super(SingleModalityFusion, self).__init__(n_speaker, input_embedding_A, output)
 
-        self.context_share = nn.Linear(self.context_embedding, self.shared_embedding)
+        self.context_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
         self.input_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
 
         self.norm_context = nn.BatchNorm1d(self.shared_embedding)
@@ -129,6 +84,56 @@ class SingleModalityFusion(ModalityFusion):
             shared_input, shared_context)
 
         return self.final_layer(torch.cat((updated_shared, speaker_embedding), dim=1))
+
+class DoubleModalityFusion(ModalityFusion):
+    def __init__(self, n_speaker: int, input_embedding_a: int, input_embedding_b: int, output: int) -> None:
+        super(DoubleModalityFusion, self).__init__(n_speaker, input_embedding_a, output)
+
+        self.input_embedding_B = input_embedding_b
+
+        self.B_context_share = nn.Linear(self.input_embedding_B, self.shared_embedding)
+        self.B_utterance_share = nn.Linear(self.input_embedding_B, self.shared_embedding)
+
+        self.norm_B_context = nn.BatchNorm1d(self.shared_embedding)
+        self.norm_B_utterance = nn.BatchNorm1d(self.shared_embedding)
+
+        self.final_layer = nn.Sequential(
+            nn.Linear(self.n_speaker + 2 * self.shared_embedding, output),
+            nn.BatchNorm1d(output),
+            nn.ReLU(),
+            nn.Dropout(self.dropout))
+
+    def attention_aggregator(self, feA, feB, feC, feD):
+        """ This method caluates the attention for feA with respect to others"""
+        input = self.attention(feA, feB) + self.attention(feA,
+                                                          feC) + self.attention(feA, feD)
+        # here we call for pairwise attention
+        return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
+
+    def forward(self, uA, cA, uB, cB, speaker_embedding):
+        """making Feature Projection in order to make all feature of same dimension"""
+
+        shared_A_context = self.norm_A_context(
+            nn.functional.relu(self.A_context_share(cA)))
+        shared_A_utterance = self.norm_A_utterance(
+            nn.functional.relu(self.A_utterance_share(uA)))
+
+        shared_B_context = self.norm_B_context(
+            nn.functional.relu(self.B_context_share(cB)))
+        shared_B_utterance = self.norm_B_utterance(
+            nn.functional.relu(self.B_utterance_share(uB)))
+
+        updated_shared_A = shared_A_utterance * self.attention_aggregator(
+            shared_A_utterance, shared_A_context, shared_B_context, shared_B_utterance)
+
+        updated_shared_B = shared_B_utterance * self.attention_aggregator(
+            shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance)
+
+        input = torch.cat((updated_shared_A, updated_shared_B), dim=1)
+
+        input = torch.cat((input, speaker_embedding), dim=1)
+
+        return self.final_layer(input)
 
 
 class SubNet(nn.Module):
@@ -177,28 +182,29 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.video_subnet = SubNet(CONFIG.VIDEO_DIM, CONFIG.VIDEO_HIDDEN, CONFIG.VIDEO_DROPOUT) if CONFIG.USE_VISUAL else None
         self.audio_subnet = SubNet(CONFIG.AUDIO_DIM, CONFIG.AUDIO_HIDDEN, CONFIG.AUDIO_DROPOUT) if CONFIG.USE_AUDIO else None
         self.text_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.TEXT_HIDDEN, CONFIG.TEXT_DROPOUT) if CONFIG.USE_TEXT else None
-        self.context_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.CONTEXT_HIDDEN, CONFIG.CONTEXT_DROPOUT) if CONFIG.USE_CONTEXT else None
         self.speaker_subnet = SubNet(speaker_num, CONFIG.SPEAKER_HIDDEN, CONFIG.SPEAKER_DROPOUT) if CONFIG.USE_SPEAKER else None
 
-        self.t_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.CONTEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.a_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.CONTEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.ta_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.CONTEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.t_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.a_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.ta_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
 
         self.post_fusion_layer_dropout = nn.Dropout(CONFIG.POST_FUSION_DROPOUT)
 
         self.post_fusion_layer_1 = nn.Sequential(
             nn.Linear(CONFIG.POST_FUSION_DIM_1, CONFIG.POST_FUSION_DIM_2),
             nn.BatchNorm1d(CONFIG.POST_FUSION_DIM_2),
-            nn.ReLU())
+            nn.ReLU(),
+            nn.Dropout(CONFIG.POST_FUSION_DROPOUT))
 
         self.post_fusion_layer_2 = nn.Sequential(
             nn.Linear(CONFIG.POST_FUSION_DIM_2, CONFIG.POST_FUSION_DIM_3),
             nn.BatchNorm1d(CONFIG.POST_FUSION_DIM_3),
-            nn.ReLU())
+            nn.ReLU(),
+            nn.Dropout(CONFIG.POST_FUSION_DROPOUT))
 
         self.fc = nn.Linear(CONFIG.POST_FUSION_DIM_3, 2)
 
-    def forward(self, text_x: Tensor, video_x: Tensor, audio_x: Tensor, speaker_x: Tensor, context_x: Tensor) -> Tensor:
+    def forward(self, text_x: Tensor, video_x: Tensor, audio_x: Tensor, speaker_x: Tensor, text_c: Tensor, audio_c: Tensor) -> Tensor:
         """
             Read the bert text embeddings
 
@@ -214,14 +220,15 @@ class WeightedMultiModalFusionNetwork(Classifier):
         audio_h = self.audio_subnet(audio_x) if CONFIG.USE_AUDIO else None
         text_h = self.text_subnet(text_x) if CONFIG.USE_TEXT else None
         speaker_h = self.speaker_subnet(speaker_x) if CONFIG.USE_SPEAKER else None
-        context_h = self.context_subnet(context_x) if CONFIG.USE_CONTEXT else None
+        text_c_h = self.text_subnet(text_c) if CONFIG.USE_CONTEXT and CONFIG.USE_TEXT else None
+        audio_c_h = self.audio_subnet(audio_c) if CONFIG.USE_CONTEXT and CONFIG.USE_AUDIO else None
 
         if CONFIG.USE_TEXT and CONFIG.USE_AUDIO:
-            fusion_h = self.ta_fusion(text_h, audio_h, context_h, speaker_h)
+            fusion_h = self.ta_fusion(text_h, text_c_h, audio_h, audio_c_h, speaker_h)
         elif CONFIG.USE_TEXT:
-            fusion_h = self.t_fusion(text_h, context_h, speaker_h)
+            fusion_h = self.t_fusion(text_h, text_c_h, speaker_h)
         elif CONFIG.USE_AUDIO:
-            fusion_h = self.a_fusion(audio_h, context_h, speaker_h)
+            fusion_h = self.a_fusion(audio_h, audio_c_h, speaker_h)
 
         x = self.post_fusion_layer_1(fusion_h)
         x = self.post_fusion_layer_dropout(x)

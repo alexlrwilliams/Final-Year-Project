@@ -21,6 +21,7 @@ class Config:
     SHOW_ID = 3
     SPEAKER_ID = 4
     CONTEXT_ID = 5
+    AUDIO_CONTEXT_ID = 6
 
     TEXT_DIM = 1024
     VIDEO_DIM = 2048
@@ -54,6 +55,7 @@ class Config:
     BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
     BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
     AUDIO_EMBEDDINGS = "data/audio-features.pt"
+    AUDIO_CONTEXT_EMBEDDINGS = "data/audio-context-features.pt"
     MODEL_NAME = 'weighted_fusion'
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"
@@ -68,4 +70,4 @@ class TextAndAudio(Config):
     USE_TEXT = True
     USE_AUDIO = True
 
-CONFIG = AudioOnly()
+CONFIG = TextAndAudio()

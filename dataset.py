@@ -10,12 +10,13 @@ from config import CONFIG
 class MultiModalDataset(torch.utils.data.Dataset):
     def __init__(self, text: List[np.ndarray], video: np.ndarray,
                  audio: np.ndarray, speaker: np.ndarray,
-                 context: np.ndarray, label: np.ndarray) -> None:
+                 text_c: np.ndarray, audio_c: np.ndarray, label: np.ndarray) -> None:
         self.vision = video if CONFIG.USE_VISUAL else None
         self.text = text if CONFIG.USE_TEXT else None
         self.audio = audio if CONFIG.USE_AUDIO else None
         self.speaker = speaker if CONFIG.USE_SPEAKER else None
-        self.context = context if CONFIG.USE_CONTEXT else None
+        self.text_c = text_c if CONFIG.USE_CONTEXT and CONFIG.USE_TEXT else None
+        self.audio_c = audio_c if CONFIG.USE_CONTEXT and CONFIG.USE_AUDIO else None
         self.label = label
 
     def __len__(self) -> int:
@@ -32,5 +33,8 @@ class MultiModalDataset(torch.utils.data.Dataset):
         if CONFIG.USE_SPEAKER:
             data = data | { 'speaker': torch.Tensor(self.speaker[index]) }
         if CONFIG.USE_CONTEXT:
-            data = data | { 'context': torch.Tensor(self.context[index]) }
+            if CONFIG.USE_TEXT:
+                data = data | { 'text_c': torch.Tensor(self.text_c[index]) }
+            if CONFIG.USE_AUDIO:
+                data = data | { 'audio_c': torch.Tensor(self.audio_c[index]) }
         return data | { 'labels': torch.Tensor(self.label[index]).type(torch.LongTensor) }
