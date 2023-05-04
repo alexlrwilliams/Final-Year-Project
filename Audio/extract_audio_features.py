@@ -75,15 +75,6 @@ if __name__ == '__main__':
     else:
         embeddings = torch.load('../data/hubert_embeddings.pt')
         print(f"Processed {len(embeddings)} embeddings.")
-
-    output = {}
-    for idx in range(len(embeddings)):
-        print(f"id:{idx}")
-        print(f"id:{ids[idx]}")
-        print(f"feature:{embeddings[idx]}")
-        output[ids[idx]] = embeddings[idx]
-
-    print([idx for idx in range(len(embeddings))])
     output = {ids[idx]: embeddings[idx] for idx in range(len(embeddings))}
     print(f"Output {len(output)} audio features.")
     torch.save(output, '../data/audio_features.pt')
