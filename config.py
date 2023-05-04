@@ -53,7 +53,7 @@ class Config:
     DATA_PATH = "data/extended_dataset.csv"
     BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
     BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
-    AUDIO_EMBEDDINGS = "data/audio_features.pt"
+    AUDIO_EMBEDDINGS = "data/audio-features.pt"
     MODEL_NAME = 'weighted_fusion'
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"

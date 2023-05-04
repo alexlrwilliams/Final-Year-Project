@@ -4,7 +4,7 @@ import torch.utils.data
 if __name__ == '__main__':
     test = os.listdir("../data/videos/utterance")
     new = [x.split('.')[0] for x in test]
-    ahh = list(torch.load('../data/hubert_embeddings.pt').keys())
+    ahh = list(torch.load('../data/hubert-embeddings.pt').keys())
     for pic in new:
         x = pic.replace("_u", "")
         if not x in ahh:
