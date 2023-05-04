@@ -4,8 +4,7 @@ from transformers import AutoProcessor, HubertModel
 import librosa
 import torch
 import os
-
-import config
+from config import CONFIG
 
 
 def get_librosa_features(path: str) -> np.ndarray:
@@ -46,7 +45,7 @@ def get_filename(path: str) -> str:
 
 if __name__ == '__main__':
     processor = AutoProcessor.from_pretrained("facebook/hubert-large-ls960-ft")
-    model = HubertModel.from_pretrained("facebook/hubert-large-ls960-ft").to(config.DEVICE)
+    model = HubertModel.from_pretrained("facebook/hubert-large-ls960-ft").to(CONFIG.DEVICE)
     BATCH_SIZE = 4
 
     audio_dir = "../data/audios/utterance"
@@ -65,7 +64,7 @@ if __name__ == '__main__':
         embeddings = []
         for batch in batches:
             with torch.no_grad():
-                input_values = processor(batch, padding=True, return_tensors="pt").input_values.to(config.DEVICE)
+                input_values = processor(batch, padding=True, return_tensors="pt").input_values.to(CONFIG.DEVICE)
                 hidden_states = model(input_values).last_hidden_state
                 mean_last_4_layers = torch.mean(hidden_states[:, -4:, :], dim=1)
                 embeddings.append(mean_last_4_layers)

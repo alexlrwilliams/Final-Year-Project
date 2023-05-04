@@ -1,24 +1,10 @@
 import pickle
 import sys
 from typing import List, Optional, Dict, Tuple, Any
-
 import numpy as np
 import torch
 from torch.nn import Module
-
-import config
-
-
-def pickle_loader(filename: str) -> Any:
-    """
-        :param filename: The ID of the data e.g. SPEAKER_ID representing the index of the data in the item
-
-        :return: deserialised pickle data
-    """
-    if sys.version_info[0] < 3:
-        return pickle.load(open(filename, 'rb'))
-    else:
-        return pickle.load(open(filename, 'rb'), encoding="latin1")
+from config import CONFIG
 
 
 def get_data(type_id: int, train_input: List[Tuple[object]]) -> List[Any]:
@@ -43,7 +29,7 @@ def get_author_ind(train_ind_si: List[int], data_input: List[Tuple[object]]) -> 
 
     train_input = [data_input[ind] for ind in train_ind_si]
 
-    authors = get_data(config.SPEAKER_ID, train_input)
+    authors = get_data(CONFIG.SPEAKER_ID, train_input)
     author_list = set()
 
     # Anonymise all unnamed people to same author index

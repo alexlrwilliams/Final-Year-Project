@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-import config
+from config import CONFIG
 from classifier import Classifier
 
 
@@ -16,22 +16,23 @@ class SingleModalityFusion(nn.Module):
             output - size of output
     """
 
-    def __init__(self, n_speaker: int, input_embedding_a: int, output: int) -> None:
+    def __init__(self, n_speaker: int, input_embedding_a: int, context_embedding: int, output: int) -> None:
         """
             Initializes internal ModalityFusion state
         """
         super(SingleModalityFusion, self).__init__()
         self.n_speaker = n_speaker
         self.input_embedding = input_embedding_a
+        self.context_embedding = context_embedding
         self.shared_embedding = 1024
         self.projection_embedding = 512
         self.dropout = 0.5
 
-        self.context_share = nn.Linear(self.input_embedding, self.shared_embedding)
-        self.utterance_share = nn.Linear(self.input_embedding, self.shared_embedding)
+        self.context_share = nn.Linear(self.context_embedding, self.shared_embedding)
+        self.input_share = nn.Linear(self.input_embedding, self.shared_embedding)
 
         self.norm_context = nn.BatchNorm1d(self.shared_embedding)
-        self.norm_utterance = nn.BatchNorm1d(self.shared_embedding)
+        self.norm_input = nn.BatchNorm1d(self.shared_embedding)
 
         self.collaborative_gate_1 = nn.Linear(2*self.shared_embedding, self.projection_embedding)
         self.collaborative_gate_2 = nn.Linear(self.projection_embedding, self.shared_embedding)
@@ -52,25 +53,25 @@ class SingleModalityFusion(nn.Module):
         # here we call for pairwise attention
         return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
 
-    def forward(self, uA: Tensor, cA: Tensor, speaker_embedding: Tensor) -> Tensor:
+    def forward(self, input_modality: Tensor, context: Tensor, speaker_embedding: Tensor) -> Tensor:
         """
             Read the bert text embeddings
 
-            :param uA: A tensor representing the utterance modality
-            :param cA: A tensor representing the context modality
+            :param input_modality: A tensor representing the input modality
+            :param context: A tensor representing the context modality
             :param speaker_embedding: A tensor representing the speaker embedding
 
             :return: A tensor containing the concatenated / fused output of the three input modalities
         """
 
         shared_context = self.norm_context(
-            nn.functional.relu(self.context_share(cA)))
+            nn.functional.relu(self.context_share(context)))
 
-        shared_utterance = self.norm_utterance(
-            nn.functional.relu(self.utterance_share(uA)))
+        shared_input = self.norm_input(
+            nn.functional.relu(self.input_share(input_modality)))
 
-        updated_shared = shared_utterance * self.attention_aggregator(
-            shared_utterance, shared_context)
+        updated_shared = shared_input * self.attention_aggregator(
+            shared_input, shared_context)
 
         return self.final_layer(torch.cat((updated_shared, speaker_embedding), dim=1))
 
@@ -118,27 +119,28 @@ class WeightedMultiModalFusionNetwork(Classifier):
         """
         super(WeightedMultiModalFusionNetwork, self).__init__()
 
-        self.video_subnet = SubNet(config.VIDEO_DIM, config.VIDEO_HIDDEN, config.VIDEO_DROPOUT) if config.USE_VISUAL else None
-        self.audio_subnet = SubNet(config.AUDIO_DIM, config.AUDIO_HIDDEN, config.AUDIO_DROPOUT) if config.USE_AUDIO else None
-        self.text_subnet = SubNet(config.TEXT_DIM, config.TEXT_HIDDEN, config.TEXT_DROPOUT) if config.USE_TEXT else None
-        self.context_subnet = SubNet(config.TEXT_DIM, config.CONTEXT_HIDDEN, config.CONTEXT_DROPOUT) if config.USE_CONTEXT else None
-        self.speaker_subnet = SubNet(speaker_num, config.SPEAKER_HIDDEN, config.SPEAKER_DROPOUT) if config.USE_SPEAKER else None
+        self.video_subnet = SubNet(CONFIG.VIDEO_DIM, CONFIG.VIDEO_HIDDEN, CONFIG.VIDEO_DROPOUT) if CONFIG.USE_VISUAL else None
+        self.audio_subnet = SubNet(CONFIG.AUDIO_DIM, CONFIG.AUDIO_HIDDEN, CONFIG.AUDIO_DROPOUT) if CONFIG.USE_AUDIO else None
+        self.text_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.TEXT_HIDDEN, CONFIG.TEXT_DROPOUT) if CONFIG.USE_TEXT else None
+        self.context_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.CONTEXT_HIDDEN, CONFIG.CONTEXT_DROPOUT) if CONFIG.USE_CONTEXT else None
+        self.speaker_subnet = SubNet(speaker_num, CONFIG.SPEAKER_HIDDEN, CONFIG.SPEAKER_DROPOUT) if CONFIG.USE_SPEAKER else None
 
-        self.fusion = SingleModalityFusion(config.SPEAKER_HIDDEN, config.TEXT_HIDDEN, config.POST_FUSION_DIM_1)
+        self.text_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.CONTEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.audio_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.CONTEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
 
-        self.post_fusion_layer_dropout = nn.Dropout(config.POST_FUSION_DROPOUT)
+        self.post_fusion_layer_dropout = nn.Dropout(CONFIG.POST_FUSION_DROPOUT)
 
         self.post_fusion_layer_1 = nn.Sequential(
-            nn.Linear(config.POST_FUSION_DIM_1, config.POST_FUSION_DIM_2),
-            nn.BatchNorm1d(config.POST_FUSION_DIM_2),
+            nn.Linear(CONFIG.POST_FUSION_DIM_1, CONFIG.POST_FUSION_DIM_2),
+            nn.BatchNorm1d(CONFIG.POST_FUSION_DIM_2),
             nn.ReLU())
 
         self.post_fusion_layer_2 = nn.Sequential(
-            nn.Linear(config.POST_FUSION_DIM_2, config.POST_FUSION_DIM_3),
-            nn.BatchNorm1d(config.POST_FUSION_DIM_3),
+            nn.Linear(CONFIG.POST_FUSION_DIM_2, CONFIG.POST_FUSION_DIM_3),
+            nn.BatchNorm1d(CONFIG.POST_FUSION_DIM_3),
             nn.ReLU())
 
-        self.fc = nn.Linear(config.POST_FUSION_DIM_3, 2)
+        self.fc = nn.Linear(CONFIG.POST_FUSION_DIM_3, 2)
 
     def forward(self, text_x: Tensor, video_x: Tensor, audio_x: Tensor, speaker_x: Tensor, context_x: Tensor) -> Tensor:
         """
@@ -152,13 +154,16 @@ class WeightedMultiModalFusionNetwork(Classifier):
 
             :return: A tensor containing the output of the model
         """
-        video_h = self.video_subnet(video_x) if config.USE_VISUAL else None
-        audio_h = self.audio_subnet(audio_x) if config.USE_AUDIO else None
-        text_h = self.text_subnet(text_x) if config.USE_TEXT else None
-        speaker_h = self.speaker_subnet(speaker_x) if config.USE_SPEAKER else None
-        context_h = self.context_subnet(context_x) if config.USE_CONTEXT else None
+        video_h = self.video_subnet(video_x) if CONFIG.USE_VISUAL else None
+        audio_h = self.audio_subnet(audio_x) if CONFIG.USE_AUDIO else None
+        text_h = self.text_subnet(text_x) if CONFIG.USE_TEXT else None
+        speaker_h = self.speaker_subnet(speaker_x) if CONFIG.USE_SPEAKER else None
+        context_h = self.context_subnet(context_x) if CONFIG.USE_CONTEXT else None
 
-        fusion_h = self.fusion(text_h, context_h, speaker_h)
+        if CONFIG.USE_TEXT:
+            fusion_h = self.text_fusion(text_h, context_h, speaker_h)
+        elif CONFIG.USE_AUDIO:
+            fusion_h = self.audio_fusion(audio_h, context_h, speaker_h)
 
         x = self.post_fusion_layer_1(fusion_h)
         x = self.post_fusion_layer_dropout(x)

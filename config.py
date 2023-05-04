@@ -1,108 +1,71 @@
-# config.py
+# CONFIG.py
 import torch
 
-global USE_TEXT
-USE_TEXT = True
-global USE_CONTEXT
-USE_CONTEXT = True
-global USE_SPEAKER
-USE_SPEAKER = True
-global USE_AUDIO
-USE_AUDIO = False
-global USE_VISUAL
-USE_VISUAL = False
+class Config:
+    runs = 1
 
-global DEVICE
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    USE_CONTEXT = True
+    USE_SPEAKER = True
 
-global SPLITS
-SPLITS = 10
+    USE_TEXT = False
+    USE_AUDIO = False
+    USE_VISUAL = False
 
-global TEXT_ID
-global VIDEO_ID
-global AUDIO_ID
-global SHOW_ID
-global SPEAKER_ID
-global CONTEXT_ID
-TEXT_ID = 0
-VIDEO_ID = 1
-AUDIO_ID = 2
-SHOW_ID = 3
-SPEAKER_ID = 4
-CONTEXT_ID = 5
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-global TEXT_DIM
-global VIDEO_DIM
-global AUDIO_DIM
-TEXT_DIM = 1024
-VIDEO_DIM = 2048
-AUDIO_DIM = 283
+    SPLITS = 10
 
-global CONTEXT_HIDDEN
-global TEXT_HIDDEN
-global VIDEO_HIDDEN
-global AUDIO_HIDDEN
-global SPEAKER_HIDDEN
-CONTEXT_HIDDEN = 32
-TEXT_HIDDEN = 32
-VIDEO_HIDDEN = 128
-AUDIO_HIDDEN = 16
-SPEAKER_HIDDEN = 4
+    TEXT_ID = 0
+    VIDEO_ID = 1
+    AUDIO_ID = 2
+    SHOW_ID = 3
+    SPEAKER_ID = 4
+    CONTEXT_ID = 5
 
-global VIDEO_DROPOUT
-global AUDIO_DROPOUT
-global TEXT_DROPOUT
-global POST_FUSION_DROPOUT
-global SPEAKER_DROPOUT
-global CONTEXT_DROPOUT
-VIDEO_DROPOUT = 0.2
-AUDIO_DROPOUT = 0.2
-TEXT_DROPOUT = 0.2
-POST_FUSION_DROPOUT = 0.4
-SPEAKER_DROPOUT = 0.2
-CONTEXT_DROPOUT = 0.2
+    TEXT_DIM = 1024
+    VIDEO_DIM = 2048
+    AUDIO_DIM = 1024
 
-global POST_FUSION_DIM_1
-POST_FUSION_DIM_1 = 512
+    CONTEXT_HIDDEN = 32
+    TEXT_HIDDEN = 32
+    VIDEO_HIDDEN = 128
+    AUDIO_HIDDEN = 16
+    SPEAKER_HIDDEN = 4
 
-global POST_FUSION_DIM_2
-POST_FUSION_DIM_2 = 256
+    VIDEO_DROPOUT = 0.2
+    AUDIO_DROPOUT = 0.2
+    TEXT_DROPOUT = 0.2
+    POST_FUSION_DROPOUT = 0.4
+    SPEAKER_DROPOUT = 0.2
+    CONTEXT_DROPOUT = 0.2
 
-global POST_FUSION_DIM_3
-POST_FUSION_DIM_3 = 128
+    POST_FUSION_DIM_1 = 512
+    POST_FUSION_DIM_2 = 256
+    POST_FUSION_DIM_3 = 128
 
-global LEARNING_RATE
-LEARNING_RATE = 5e-4
+    LEARNING_RATE = 5e-4
+    WEIGHT_DECAY = 0.001
 
-global WEIGHT_DECAY
-WEIGHT_DECAY = 0.001
+    EPOCHS = 200
+    EARLY_STOPPING = 50
+    BATCH_SIZE = 32
 
-global EPOCHS
-EPOCHS = 200
+    DATA_PATH = "data/extended_dataset.csv"
+    BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
+    BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
+    AUDIO_EMBEDDINGS = "data/audio_features.pt"
+    MODEL_NAME = 'weighted_fusion'
+    MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
+    RESULT_FILE = "output/{}.json"
 
-global EARLY_STOPPING
-EARLY_STOPPING = 50
+class TextOnly(Config):
+    USE_TEXT = True
 
-global DATA_PATH
-DATA_PATH = "data/extended_dataset.csv"
+class AudioOnly(Config):
+    USE_AUDIO = True
 
-global BART_TARGET_EMBEDDINGS
-BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
+class TextAndAudio(Config):
+    USE_TEXT = True
+    USE_AUDIO = True
 
-global BART_CONTEXT_EMBEDDINGS
-BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
-
-global AUDIO_PICKLE
-AUDIO_PICKLE = "data/audio_features.p"
-
-global BATCH_SIZE
-BATCH_SIZE = 32
-
-global MODEL_NAME
-MODEL_NAME = 'weighted_fusion'
-
-global MODEL_PATH
-MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
-
-global RESULT_FILE
-RESULT_FILE = "output/{}.json"
+CONFIG = AudioOnly()

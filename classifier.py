@@ -7,18 +7,18 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import config
+from config import CONFIG
 from utils import accuracy, SaveBestModel
 
 
 def extract_data(data: Dict[str, Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     return \
-        data['vision'].to(config.DEVICE) if config.USE_VISUAL else None, \
-            data['audio'].to(config.DEVICE) if config.USE_AUDIO else None, \
-            data['text'].to(config.DEVICE) if config.USE_TEXT else None, \
-            data['context'].to(config.DEVICE) if config.USE_CONTEXT else None, \
-            data['speaker'].to(config.DEVICE) if config.USE_SPEAKER else None, \
-            data['labels'].to(config.DEVICE)
+        data['vision'].to(CONFIG.DEVICE) if CONFIG.USE_VISUAL else None, \
+            data['audio'].to(CONFIG.DEVICE) if CONFIG.USE_AUDIO else None, \
+            data['text'].to(CONFIG.DEVICE) if CONFIG.USE_TEXT else None, \
+            data['context'].to(CONFIG.DEVICE) if CONFIG.USE_CONTEXT else None, \
+            data['speaker'].to(CONFIG.DEVICE) if CONFIG.USE_SPEAKER else None, \
+            data['labels'].to(CONFIG.DEVICE)
 
 
 def epoch_end(epoch: int, max_epochs: int, val_result: Dict[str, Any], result: Dict[str, Any]) -> None:
@@ -59,12 +59,12 @@ class Classifier(torch.nn.Module):
             :return: best accuracy and its epoch
         """
         if optimizer is None:
-            optimizer = optim.Adam(self.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+            optimizer = optim.Adam(self.parameters(), lr=CONFIG.LEARNING_RATE, weight_decay=CONFIG.WEIGHT_DECAY)
 
         best_model = SaveBestModel()
         self.train()
 
-        for epoch in range(config.EPOCHS):
+        for epoch in range(CONFIG.EPOCHS):
 
             with tqdm(train_loader) as td:
                 for batch_data in td:
@@ -75,13 +75,13 @@ class Classifier(torch.nn.Module):
 
             # Validation phase
             val_result = self.evaluate(val_loader)
-            best_model.save_if_best_model(val_result["acc"], epoch, self, config.MODEL_PATH)
+            best_model.save_if_best_model(val_result["acc"], epoch, self, CONFIG.MODEL_PATH)
  
             if (epoch + 1) % 10 == 0:
                 train_result = self.evaluate(train_loader)
-                epoch_end(epoch, config.EPOCHS, val_result, train_result)
+                epoch_end(epoch, CONFIG.EPOCHS, val_result, train_result)
 
-            if (epoch - best_model.epoch) >= config.EARLY_STOPPING:
+            if (epoch - best_model.epoch) >= CONFIG.EARLY_STOPPING:
                 break
 
         print(f'the best epochs:{best_model.epoch},the best acc:{best_model.acc}')

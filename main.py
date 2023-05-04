@@ -1,11 +1,9 @@
 import json
-
-import pandas as pd
 import numpy as np
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 
-import config
+from config import CONFIG
 from data_loader import MultiModalDataLoader
 from network import WeightedMultiModalFusionNetwork
 from results import Result, IterationResults
@@ -28,12 +26,12 @@ def k_fold_cross_validation():
 
         # Initialize the model and move to the device
         model = WeightedMultiModalFusionNetwork(speakers_num)
-        model = model.to(config.DEVICE)
+        model = model.to(CONFIG.DEVICE)
 
         best_result = model.fit(train_loader, val_loader)
 
-        model.load_state_dict(torch.load(config.MODEL_PATH)['model_state_dict'])
-        model.to(config.DEVICE)
+        model.load_state_dict(torch.load(CONFIG.MODEL_PATH)['model_state_dict'])
+        model.to(CONFIG.DEVICE)
 
         test_output = model.evaluate(test_loader)
         print('Test: ', test_output['acc'])
@@ -67,7 +65,7 @@ def main():
     print(round(avg_precision * 100, 1), round(avg_recall * 100, 1), round(avg_f1_score * 100, 1))
 
     file_name = 'five_results_average'
-    with open(config.RESULT_FILE.format(file_name), 'w') as file:
+    with open(CONFIG.RESULT_FILE.format(file_name), 'w') as file:
         json.dump({
             'precision:': avg_precision,
             'recall': avg_recall,

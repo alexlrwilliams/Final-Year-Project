@@ -2,17 +2,17 @@ import os
 import pandas as pd
 import torch
 from transformers import BartTokenizer, BartModel
-import config
+from config import CONFIG
 
 FILE_PATH = "../data/extended_dataset.csv"
 BATCH_SIZE = 16
 
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
-model = BartModel.from_pretrained('facebook/bart-large').to(config.DEVICE)
+model = BartModel.from_pretrained('facebook/bart-large').to(CONFIG.DEVICE)
 
 def extract_bart_embeddings(df, column_name):
   sentences = df[column_name].tolist()
-  input_ids = tokenizer(sentences, padding=True, truncation=True, return_tensors="pt")['input_ids'].to(config.DEVICE)
+  input_ids = tokenizer(sentences, padding=True, truncation=True, return_tensors="pt")['input_ids'].to(CONFIG.DEVICE)
 
   num_batches = (len(input_ids) + BATCH_SIZE - 1) // BATCH_SIZE
   batches = [input_ids[i * BATCH_SIZE:(i + 1) * BATCH_SIZE] for i in range(num_batches)]
@@ -34,5 +34,5 @@ if __name__ == '__main__':
     context_embeddings = extract_bart_embeddings(context, 'SENTENCE')
     utterance_embeddings = extract_bart_embeddings(utterances, 'SENTENCE')
 
-    torch.save(context_embeddings, os.path.join("../", config.BART_CONTEXT_EMBEDDINGS))
-    torch.save(utterance_embeddings, os.path.join("../", config.BART_TARGET_EMBEDDINGS))
+    torch.save(context_embeddings, os.path.join("../", CONFIG.BART_CONTEXT_EMBEDDINGS))
+    torch.save(utterance_embeddings, os.path.join("../", CONFIG.BART_TARGET_EMBEDDINGS))

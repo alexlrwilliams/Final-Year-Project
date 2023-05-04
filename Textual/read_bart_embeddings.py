@@ -1,8 +1,6 @@
 import pandas as pd
 import torch
-
-import config
-
+from config import CONFIG
 
 def get_context_bart_encoding(df):
   length = [df[df['SCENE']==idx]['SCENE'].count()-1 for idx in df['SCENE'].unique()]
@@ -34,4 +32,4 @@ def get_target_bart_embedding():
 
 
 if __name__ == '__main__':
-    get_context_bart_encoding(pd.read_csv("../"+config.DATA_PATH))
+    get_context_bart_encoding(pd.read_csv("../"+CONFIG.DATA_PATH))
