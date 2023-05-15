@@ -35,7 +35,7 @@ def save_efficientnet_features() -> None:
     total_frame_count = sum(dataset.frame_count_by_video_id[video_id] for video_id in dataset.video_ids)
 
     with tqdm(total=total_frame_count, desc="Extracting EfficientNet features") as progress_bar:
-        instances = []
+        instances = {}
         for instance in DataLoader(dataset):
             video_id = instance["id"]
             frames = instance["frames"]
@@ -51,10 +51,7 @@ def save_efficientnet_features() -> None:
                 embeddings[start_index:end_index] = classifier_output.cpu()
 
                 progress_bar.update(len(frame_ids_range))
-            instances.append({
-                'id': video_id,
-                'embeddings': torch.mean(torch.stack(embeddings), dim=0).cpu()
-            })
+            instances[video_id] = torch.mean(torch.stack(embeddings), dim=0).cpu()
     torch.save(instances, '../data/features/visual/visual_context_features.pt')
 
 
