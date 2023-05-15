@@ -90,4 +90,4 @@ class VideoAndAudioAndText(Config):
     USE_VISUAL = True
     USE_TEXT = True
 
-CONFIG = VideoOnly()
+CONFIG = VideoAndAudioAndText()

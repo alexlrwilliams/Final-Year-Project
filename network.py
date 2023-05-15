@@ -135,6 +135,62 @@ class DoubleModalityFusion(ModalityFusion):
 
         return self.final_layer(input)
 
+class TripleModalityFusion(DoubleModalityFusion):
+    def __init__(self, n_speaker: int, input_embedding_a: int, input_embedding_b: int, input_embedding_C: int, output: int):
+        super(TripleModalityFusion, self).__init__(n_speaker, input_embedding_a, input_embedding_b, output)
+
+        self.input_embedding_C = input_embedding_C
+
+        self.C_context_share = nn.Linear(self.input_embedding_C, self.shared_embedding)
+        self.C_utterance_share = nn.Linear(self.input_embedding_C, self.shared_embedding)
+
+        self.norm_C_context = nn.BatchNorm1d(self.shared_embedding)
+        self.norm_C_utterance = nn.BatchNorm1d(self.shared_embedding)
+
+        self.final_layer = nn.Sequential(
+            nn.Linear(self.n_speaker + 3 * self.shared_embedding, output),
+            nn.BatchNorm1d(output),
+            nn.ReLU(),
+            nn.Dropout(self.dropout))
+
+    def attention_aggregator(self, feA, feB, feC, feD, feE, feF):
+        """ This method caluates the attention for feA with respect to others"""
+        input = self.attention(feA, feB) + self.attention(feA, feC) + self.attention(
+            feA, feD) + self.attention(feA, feE) + self.attention(feA, feF)
+        # here we call for pairwise attention
+        return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
+
+    def forward(self, uA, cA, uB, cB, uC, cC, speaker_embedding):
+        """making Feature Projection in order to make all feature of same dimension"""
+
+        shared_A_context = self.norm_A_context(
+            nn.functional.relu(self.A_context_share(cA)))
+        shared_A_utterance = self.norm_A_utterance(
+            nn.functional.relu(self.A_utterance_share(uA)))
+
+        shared_B_context = self.norm_B_context(
+            nn.functional.relu(self.B_context_share(cB)))
+        shared_B_utterance = self.norm_B_utterance(
+            nn.functional.relu(self.B_utterance_share(uB)))
+
+        shared_C_context = self.norm_C_context(
+            nn.functional.relu(self.C_context_share(cC)))
+        shared_C_utterance = self.norm_C_utterance(
+            nn.functional.relu(self.C_utterance_share(uC)))
+
+
+        updated_shared_A = shared_A_utterance * self.attention_aggregator(
+            shared_A_utterance, shared_A_context, shared_C_context, shared_C_utterance, shared_B_context, shared_B_utterance)
+        updated_shared_C = shared_C_utterance * self.attention_aggregator(
+            shared_C_utterance, shared_C_context, shared_A_context, shared_A_utterance, shared_B_context, shared_B_utterance)
+        updated_shared_B = shared_B_utterance * self.attention_aggregator(
+            shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance, shared_C_context, shared_C_utterance)
+
+        input = torch.cat((updated_shared_A, updated_shared_C), dim=1)
+        input = torch.cat((input, updated_shared_B), dim=1)
+        input = torch.cat((input, speaker_embedding), dim=1)
+
+        return self.final_layer(input)
 
 class SubNet(nn.Module):
     """
@@ -188,6 +244,9 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.a_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
         self.v_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
         self.ta_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.va_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.tv_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.tva_fusion = TripleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
 
         self.post_fusion_layer_dropout = nn.Dropout(CONFIG.POST_FUSION_DROPOUT)
 
@@ -214,6 +273,9 @@ class WeightedMultiModalFusionNetwork(Classifier):
             :param audio_x: A tensor representing the audio modality
             :param video_x: A tensor representing the video modality
             :param text_x: A tensor representing the textual modality
+            :param text_c: A tensor representing the textual context modality
+            :param audio_c: A tensor representing the audio context modality
+            :param video_c: A tensor representing the visual context modality
 
             :return: A tensor containing the output of the model
         """
@@ -225,8 +287,14 @@ class WeightedMultiModalFusionNetwork(Classifier):
         audio_c_h = self.audio_subnet(audio_c) if CONFIG.USE_CONTEXT and CONFIG.USE_AUDIO else None
         video_c_h = self.video_subnet(video_c) if CONFIG.USE_CONTEXT and CONFIG.USE_VISUAL else None
 
-        if CONFIG.USE_TEXT and CONFIG.USE_AUDIO:
+        if CONFIG.USE_VISUAL and CONFIG.USE_AUDIO and CONFIG.USE_TEXT:
+            fusion_h = self.tva_fusion(text_h, text_c_h, video_h, video_c_h, audio_h, audio_c_h, speaker_h)
+        elif CONFIG.USE_VISUAL and CONFIG.USE_AUDIO:
+            fusion_h = self.va_fusion(video_h, video_c_h, audio_h, audio_c_h, speaker_h)
+        elif CONFIG.USE_TEXT and CONFIG.USE_AUDIO:
             fusion_h = self.ta_fusion(text_h, text_c_h, audio_h, audio_c_h, speaker_h)
+        elif CONFIG.USE_TEXT and CONFIG.USE_VISUAL:
+            fusion_h = self.tv_fusion(text_h, text_c_h, video_h, video_c_h, speaker_h)
         elif CONFIG.USE_TEXT:
             fusion_h = self.t_fusion(text_h, text_c_h, speaker_h)
         elif CONFIG.USE_AUDIO:
