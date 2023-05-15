@@ -51,8 +51,8 @@ def save_efficientnet_features() -> None:
                 embeddings[start_index:end_index] = classifier_output.cpu()
 
                 progress_bar.update(len(frame_ids_range))
-            instances[video_id] = torch.mean(torch.stack(embeddings), dim=0).cpu()
-    torch.save(instances, '../data/features/visual/visual_context_features.pt')
+            instances[video_id] = torch.mean(torch.stack(embeddings), dim=0)
+    torch.save(instances, '../data/features/visual/visual-context-features.pt')
 
 
 if __name__ == '__main__':

@@ -22,9 +22,10 @@ class Config:
     SPEAKER_ID = 4
     CONTEXT_ID = 5
     AUDIO_CONTEXT_ID = 6
+    VIDEO_CONTEXT_ID = 7
 
     TEXT_DIM = 1024
-    VIDEO_DIM = 2048
+    VIDEO_DIM = 1000
     AUDIO_DIM = 1024
 
     CONTEXT_HIDDEN = 32
@@ -52,12 +53,12 @@ class Config:
     BATCH_SIZE = 32
 
     DATA_PATH = "data/extended_dataset.csv"
-    BART_TARGET_EMBEDDINGS = "data/bart-embeddings.pt"
-    BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
-    AUDIO_EMBEDDINGS = "data/audio-features.pt"
-    AUDIO_CONTEXT_EMBEDDINGS = "data/audio-context-features.pt"
-    VISUAL_EMBEDDINGS = "data/visual-features.pt"
-    VISUAL_CONTEXT_EMBEDDINGS = "data/visual-context-features.pt"
+    BART_TARGET_EMBEDDINGS = "data/features/text/bart-embeddings.pt"
+    BART_CONTEXT_EMBEDDINGS = "data/features/text/bart-context-embeddings.pt"
+    AUDIO_EMBEDDINGS = "data/features/audio/audio-features.pt"
+    AUDIO_CONTEXT_EMBEDDINGS = "data/features/audio/audio-context-features.pt"
+    VISUAL_EMBEDDINGS = "data/features/visual/visual-features.pt"
+    VISUAL_CONTEXT_EMBEDDINGS = "data/features/visual/visual-context-features.pt"
     MODEL_NAME = 'weighted_fusion'
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"
@@ -89,4 +90,4 @@ class VideoAndAudioAndText(Config):
     USE_VISUAL = True
     USE_TEXT = True
 
-CONFIG = TextAndAudio()
+CONFIG = VideoOnly()

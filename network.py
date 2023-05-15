@@ -186,6 +186,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
 
         self.t_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
         self.a_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.v_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
         self.ta_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
 
         self.post_fusion_layer_dropout = nn.Dropout(CONFIG.POST_FUSION_DROPOUT)
@@ -204,7 +205,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
 
         self.fc = nn.Linear(CONFIG.POST_FUSION_DIM_3, 2)
 
-    def forward(self, text_x: Tensor, video_x: Tensor, audio_x: Tensor, speaker_x: Tensor, text_c: Tensor, audio_c: Tensor) -> Tensor:
+    def forward(self, text_x: Tensor, video_x: Tensor, audio_x: Tensor, speaker_x: Tensor, text_c: Tensor, audio_c: Tensor, video_c: Tensor) -> Tensor:
         """
             Read the bert text embeddings
 
@@ -222,6 +223,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
         speaker_h = self.speaker_subnet(speaker_x) if CONFIG.USE_SPEAKER else None
         text_c_h = self.text_subnet(text_c) if CONFIG.USE_CONTEXT and CONFIG.USE_TEXT else None
         audio_c_h = self.audio_subnet(audio_c) if CONFIG.USE_CONTEXT and CONFIG.USE_AUDIO else None
+        video_c_h = self.video_subnet(video_c) if CONFIG.USE_CONTEXT and CONFIG.USE_VISUAL else None
 
         if CONFIG.USE_TEXT and CONFIG.USE_AUDIO:
             fusion_h = self.ta_fusion(text_h, text_c_h, audio_h, audio_c_h, speaker_h)
@@ -229,6 +231,8 @@ class WeightedMultiModalFusionNetwork(Classifier):
             fusion_h = self.t_fusion(text_h, text_c_h, speaker_h)
         elif CONFIG.USE_AUDIO:
             fusion_h = self.a_fusion(audio_h, audio_c_h, speaker_h)
+        elif CONFIG.USE_VISUAL:
+            fusion_h = self.v_fusion(video_h, video_c_h, speaker_h)
 
         x = self.post_fusion_layer_1(fusion_h)
         x = self.post_fusion_layer_dropout(x)

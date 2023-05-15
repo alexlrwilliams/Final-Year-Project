@@ -4,7 +4,7 @@ from config import CONFIG
 
 def get_context_bart_encoding(df):
   length = [df[df['SCENE']==idx]['SCENE'].count()-1 for idx in df['SCENE'].unique()]
-  utterances = torch.load('./data/bart-context-embeddings.pt')
+  utterances = torch.load('./data/features/text/bart-context-embeddings.pt')
 
   cumulative_length = [length[0]]
   cumulative_value = length[0]
@@ -28,7 +28,7 @@ def get_context_bart_encoding(df):
   return result_tensor
 
 def get_target_bart_embedding():
-    return torch.load('./data/bart-embeddings.pt')
+    return torch.load('./data/features/text/bart-embeddings.pt')
 
 
 if __name__ == '__main__':

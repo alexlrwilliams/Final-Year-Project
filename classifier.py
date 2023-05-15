@@ -11,13 +11,14 @@ from config import CONFIG
 from utils import accuracy, SaveBestModel
 
 
-def extract_data(data: Dict[str, Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+def extract_data(data: Dict[str, Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     return \
         data['vision'].to(CONFIG.DEVICE) if CONFIG.USE_VISUAL else None, \
             data['audio'].to(CONFIG.DEVICE) if CONFIG.USE_AUDIO else None, \
             data['text'].to(CONFIG.DEVICE) if CONFIG.USE_TEXT else None, \
             data['text_c'].to(CONFIG.DEVICE) if CONFIG.USE_CONTEXT and CONFIG.USE_TEXT else None, \
             data['audio_c'].to(CONFIG.DEVICE) if CONFIG.USE_CONTEXT and CONFIG.USE_AUDIO else None, \
+            data['video_c'].to(CONFIG.DEVICE) if CONFIG.USE_CONTEXT and CONFIG.USE_VISUAL else None, \
             data['speaker'].to(CONFIG.DEVICE) if CONFIG.USE_SPEAKER else None, \
             data['labels'].to(CONFIG.DEVICE)
 
@@ -41,9 +42,9 @@ class Classifier(torch.nn.Module):
 
             :return: loss, accuracy, outputs and labels
         """
-        vision, audio, text, text_c, audio_c, speaker, labels = extract_data(data)
+        vision, audio, text, text_c, audio_c, video_c, speaker, labels = extract_data(data)
 
-        output = self(text, vision, audio, speaker, text_c, audio_c)
+        output = self(text, vision, audio, speaker, text_c, audio_c, video_c)
         acc = accuracy(output, labels)
         loss = F.cross_entropy(output, labels.squeeze())
         return loss, acc, output, labels
