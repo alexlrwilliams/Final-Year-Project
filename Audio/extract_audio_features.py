@@ -48,7 +48,7 @@ def get_embeddings(batch_size: int, audio_dir: str, embedding_name: str):
         print(f"Found {len(audio_files)} audio files.")
 
         if not os.path.exists('../data/hubert' + embedding_name + '-embeddings.pt'):
-            processed_audio = load_librosa_embeddings(audio_files, '../data/librosa' + embedding_name + '-embeddings.pt')
+            processed_audio = load_librosa_embeddings(audio_files, '../data/features/audio/librosa' + embedding_name + '-embeddings.pt')
 
             num_batches = (len(processed_audio) + batch_size - 1) // batch_size
             batches = [processed_audio[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
@@ -69,15 +69,15 @@ def get_embeddings(batch_size: int, audio_dir: str, embedding_name: str):
 
             embeddings = torch.cat(embeddings, dim=0)
             print(f"Processed {len(embeddings)} embeddings.")
-            torch.save(embeddings, '../data/hubert' + embedding_name + '-embeddings.pt')
+            torch.save(embeddings, '../data/features/audio/hubert' + embedding_name + '-embeddings.pt')
         else:
-            embeddings = torch.load('../data/hubert' + embedding_name + '-embeddings.pt')
+            embeddings = torch.load('../data/features/audio/hubert' + embedding_name + '-embeddings.pt')
             print(f"Processed {len(embeddings)} embeddings.")
 
         ids = [get_filename(path) for path in audio_files]
         output = {ids[idx]: embeddings[idx] for idx in range(len(embeddings))}
         print(f"Output {len(output)} audio features.")
-        torch.save(output, '../data/audio' + embedding_name + '-features.pt')
+        torch.save(output, '../data/features/audio/audio' + embedding_name + '-features.pt')
 
 def get_context_embeddings():
     get_embeddings(1, "../data/audios/context", '-context')

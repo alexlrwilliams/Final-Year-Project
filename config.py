@@ -56,9 +56,15 @@ class Config:
     BART_CONTEXT_EMBEDDINGS = "data/bart-context-embeddings.pt"
     AUDIO_EMBEDDINGS = "data/audio-features.pt"
     AUDIO_CONTEXT_EMBEDDINGS = "data/audio-context-features.pt"
+    VISUAL_EMBEDDINGS = "data/visual-features.pt"
+    VISUAL_CONTEXT_EMBEDDINGS = "data/visual-context-features.pt"
     MODEL_NAME = 'weighted_fusion'
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"
+
+
+class VideoOnly(Config):
+    USE_VISUAL = True
 
 class TextOnly(Config):
     USE_TEXT = True
@@ -69,5 +75,18 @@ class AudioOnly(Config):
 class TextAndAudio(Config):
     USE_TEXT = True
     USE_AUDIO = True
+
+class TextAndVideo(Config):
+    USE_TEXT = True
+    USE_VISUAL = True
+
+class VideoAndAudio(Config):
+    USE_AUDIO = True
+    USE_VISUAL = True
+
+class VideoAndAudioAndText(Config):
+    USE_AUDIO = True
+    USE_VISUAL = True
+    USE_TEXT = True
 
 CONFIG = TextAndAudio()
