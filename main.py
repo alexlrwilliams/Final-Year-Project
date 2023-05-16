@@ -10,7 +10,7 @@ from results import Result, IterationResults
 from utils import get_author_ind
 
 
-def k_fold_cross_validation():
+def k_fold_cross_validation(iteration: int):
     dataloader_gen = MultiModalDataLoader()
     iteration_results = IterationResults()
 
@@ -28,7 +28,7 @@ def k_fold_cross_validation():
         model = WeightedMultiModalFusionNetwork(speakers_num)
         model = model.to(CONFIG.DEVICE)
 
-        best_result = model.fit(train_loader, val_loader)
+        best_result = model.fit(iteration, fold, train_loader, val_loader)
 
         model.load_state_dict(torch.load(CONFIG.MODEL_PATH)['model_state_dict'])
         model.to(CONFIG.DEVICE)
@@ -54,7 +54,7 @@ def main():
     print(CONFIG.__class__.__name__)
 
     for i in range(5):
-        iteration_results = k_fold_cross_validation()
+        iteration_results = k_fold_cross_validation(i)
         tmp_dict = iteration_results.print_result()
         five_results.append(tmp_dict)
 

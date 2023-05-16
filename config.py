@@ -2,8 +2,6 @@
 import torch
 
 class Config:
-    runs = 1
-
     USE_CONTEXT = True
     USE_SPEAKER = True
 
@@ -40,7 +38,9 @@ class Config:
     SPEAKER_DROPOUT = 0.2
     CONTEXT_DROPOUT = 0.2
 
-    POST_FUSION_DIM_1 = 512
+    SHARED_EMBEDDING = 1024
+    PROJECTION_EMBEDDING = 512
+
     POST_FUSION_DIM_2 = 256
     POST_FUSION_DIM_3 = 128
 
@@ -48,7 +48,7 @@ class Config:
     WEIGHT_DECAY = 0.001
 
     EPOCHS = 200
-    EARLY_STOPPING = 50
+    EARLY_STOPPING = 20
     BATCH_SIZE = 32
 
     DATA_PATH = "data/extended_dataset.csv"
@@ -62,31 +62,37 @@ class Config:
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"
 
+class SingleModality(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING + Config.SPEAKER_HIDDEN
 
-class VideoOnly(Config):
+class DoubleModality(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 2 + Config.SPEAKER_HIDDEN
+
+class VideoOnly(SingleModality):
     USE_VISUAL = True
 
-class TextOnly(Config):
+class TextOnly(SingleModality):
     USE_TEXT = True
 
-class AudioOnly(Config):
+class AudioOnly(SingleModality):
     USE_AUDIO = True
 
-class TextAndAudio(Config):
+class TextAndAudio(DoubleModality):
     USE_TEXT = True
     USE_AUDIO = True
 
-class TextAndVideo(Config):
-    USE_TEXT = True
+class AudioAndVideo(DoubleModality):
+    USE_AUDIO = True
     USE_VISUAL = True
 
-class VideoAndAudio(Config):
-    USE_AUDIO = True
+class TextAndVideo(DoubleModality):
+    USE_TEXT = True
     USE_VISUAL = True
 
 class VideoAndAudioAndText(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 3 + Config.SPEAKER_HIDDEN
     USE_AUDIO = True
     USE_VISUAL = True
     USE_TEXT = True
 
-CONFIG = TextAndAudio()
+CONFIG = VideoAndAudioAndText()

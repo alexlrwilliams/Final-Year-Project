@@ -49,7 +49,7 @@ class Classifier(torch.nn.Module):
         loss = F.cross_entropy(output, labels.squeeze())
         return loss, acc, output, labels
 
-    def fit(self, train_loader: DataLoader, val_loader: DataLoader,
+    def fit(self, iteration:int, fold:int, train_loader: DataLoader, val_loader: DataLoader,
             optimizer: Optional[Optimizer] = None) -> Dict[str, Union[int, float]]:
         """
             Use gradient descent with the adam optimiser and backpropagation to train the model
@@ -68,7 +68,7 @@ class Classifier(torch.nn.Module):
 
         for epoch in range(CONFIG.EPOCHS):
 
-            with tqdm(train_loader) as td:
+            with tqdm(train_loader, desc=f"Iteration [{iteration+1}/5] Fold [{fold+1}/10] Epoch [{epoch+1}/{CONFIG.EPOCHS}]") as td:
                 for batch_data in td:
                     optimizer.zero_grad()
                     loss, _, _, _ = self.step(batch_data)

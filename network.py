@@ -52,13 +52,13 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.text_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.TEXT_HIDDEN, CONFIG.TEXT_DROPOUT) if CONFIG.USE_TEXT else None
         self.speaker_subnet = SubNet(speaker_num, CONFIG.SPEAKER_HIDDEN, CONFIG.SPEAKER_DROPOUT) if CONFIG.USE_SPEAKER else None
 
-        self.t_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.a_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.v_fusion = SingleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.ta_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.va_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.tv_fusion = DoubleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
-        self.tva_fusion = TripleModalityFusion(CONFIG.SPEAKER_HIDDEN, CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN, CONFIG.POST_FUSION_DIM_1)
+        self.t_fusion = SingleModalityFusion(CONFIG.TEXT_HIDDEN)
+        self.a_fusion = SingleModalityFusion(CONFIG.AUDIO_HIDDEN)
+        self.v_fusion = SingleModalityFusion(CONFIG.VIDEO_HIDDEN)
+        self.ta_fusion = DoubleModalityFusion(CONFIG.TEXT_HIDDEN, CONFIG.AUDIO_HIDDEN)
+        self.va_fusion = DoubleModalityFusion(CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN)
+        self.tv_fusion = DoubleModalityFusion(CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN)
+        self.tva_fusion = TripleModalityFusion(CONFIG.TEXT_HIDDEN, CONFIG.VIDEO_HIDDEN, CONFIG.AUDIO_HIDDEN)
 
         self.post_fusion_layer_dropout = nn.Dropout(CONFIG.POST_FUSION_DROPOUT)
 
@@ -113,7 +113,8 @@ class WeightedMultiModalFusionNetwork(Classifier):
             fusion_h = self.a_fusion(audio_h, audio_c_h, speaker_h)
         elif CONFIG.USE_VISUAL:
             fusion_h = self.v_fusion(video_h, video_c_h, speaker_h)
-
+        else:
+            raise RuntimeError("No Modality found.")
         x = self.post_fusion_layer_1(fusion_h)
         x = self.post_fusion_layer_dropout(x)
 

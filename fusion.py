@@ -2,14 +2,16 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from config import CONFIG
+
+
 class ModalityFusion(nn.Module):
-    def __init__(self, n_speaker: int, input_embedding_a: int, output: int) -> None:
+    def __init__(self, input_embedding_a: int) -> None:
         super(ModalityFusion, self).__init__()
 
-        self.n_speaker = n_speaker
         self.input_embedding_A = input_embedding_a
-        self.shared_embedding = 1024
-        self.projection_embedding = 512
+        self.shared_embedding = CONFIG.SHARED_EMBEDDING
+        self.projection_embedding = CONFIG.PROJECTION_EMBEDDING
         self.dropout = 0.5
 
         self.A_context_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
@@ -20,12 +22,6 @@ class ModalityFusion(nn.Module):
 
         self.collaborative_gate_1 = nn.Linear(2 * self.shared_embedding, self.projection_embedding)
         self.collaborative_gate_2 = nn.Linear(self.projection_embedding, self.shared_embedding)
-
-        self.final_layer = nn.Sequential(
-            nn.Linear(self.n_speaker + self.shared_embedding, output),
-            nn.BatchNorm1d(output),
-            nn.ReLU(),
-            nn.Dropout(self.dropout))
 
     def attention(self, featureA, featureB):
         """ This method takes two features and caluate the attention """
@@ -41,11 +37,11 @@ class SingleModalityFusion(ModalityFusion):
             output - size of output
     """
 
-    def __init__(self, n_speaker: int, input_embedding_A: int, output: int) -> None:
+    def __init__(self, input_embedding_A: int) -> None:
         """
             Initializes internal ModalityFusion state
         """
-        super(SingleModalityFusion, self).__init__(n_speaker, input_embedding_A, output)
+        super(SingleModalityFusion, self).__init__(input_embedding_A)
 
         self.context_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
         self.input_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
@@ -79,11 +75,11 @@ class SingleModalityFusion(ModalityFusion):
         updated_shared = shared_input * self.attention_aggregator(
             shared_input, shared_context)
 
-        return self.final_layer(torch.cat((updated_shared, speaker_embedding), dim=1))
+        return torch.cat((updated_shared, speaker_embedding), dim=1)
 
 class DoubleModalityFusion(ModalityFusion):
-    def __init__(self, n_speaker: int, input_embedding_a: int, input_embedding_b: int, output: int) -> None:
-        super(DoubleModalityFusion, self).__init__(n_speaker, input_embedding_a, output)
+    def __init__(self, input_embedding_a: int, input_embedding_b: int) -> None:
+        super(DoubleModalityFusion, self).__init__(input_embedding_a)
 
         self.input_embedding_B = input_embedding_b
 
@@ -93,16 +89,9 @@ class DoubleModalityFusion(ModalityFusion):
         self.norm_B_context = nn.BatchNorm1d(self.shared_embedding)
         self.norm_B_utterance = nn.BatchNorm1d(self.shared_embedding)
 
-        self.final_layer = nn.Sequential(
-            nn.Linear(self.n_speaker + 2 * self.shared_embedding, output),
-            nn.BatchNorm1d(output),
-            nn.ReLU(),
-            nn.Dropout(self.dropout))
-
     def attention_aggregator(self, feA, feB, feC, feD):
         """ This method caluates the attention for feA with respect to others"""
-        input = self.attention(feA, feB) + self.attention(feA,
-                                                          feC) + self.attention(feA, feD)
+        input = self.attention(feA, feB) + self.attention(feA, feC) + self.attention(feA, feD)
         # here we call for pairwise attention
         return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
 
@@ -127,13 +116,11 @@ class DoubleModalityFusion(ModalityFusion):
 
         input = torch.cat((updated_shared_A, updated_shared_B), dim=1)
 
-        input = torch.cat((input, speaker_embedding), dim=1)
-
-        return self.final_layer(input)
+        return torch.cat((input, speaker_embedding), dim=1)
 
 class TripleModalityFusion(DoubleModalityFusion):
-    def __init__(self, n_speaker: int, input_embedding_a: int, input_embedding_b: int, input_embedding_C: int, output: int):
-        super(TripleModalityFusion, self).__init__(n_speaker, input_embedding_a, input_embedding_b, output)
+    def __init__(self, input_embedding_a: int, input_embedding_b: int, input_embedding_C: int):
+        super(TripleModalityFusion, self).__init__(input_embedding_a, input_embedding_b)
 
         self.input_embedding_C = input_embedding_C
 
@@ -142,12 +129,6 @@ class TripleModalityFusion(DoubleModalityFusion):
 
         self.norm_C_context = nn.BatchNorm1d(self.shared_embedding)
         self.norm_C_utterance = nn.BatchNorm1d(self.shared_embedding)
-
-        self.final_layer = nn.Sequential(
-            nn.Linear(self.n_speaker + 3 * self.shared_embedding, output),
-            nn.BatchNorm1d(output),
-            nn.ReLU(),
-            nn.Dropout(self.dropout))
 
     def attention_aggregator(self, feA, feB, feC, feD, feE, feF):
         """ This method caluates the attention for feA with respect to others"""
@@ -184,6 +165,5 @@ class TripleModalityFusion(DoubleModalityFusion):
 
         input = torch.cat((updated_shared_A, updated_shared_C), dim=1)
         input = torch.cat((input, updated_shared_B), dim=1)
-        input = torch.cat((input, speaker_embedding), dim=1)
 
-        return self.final_layer(input)
+        return torch.cat((input, speaker_embedding), dim=1)
