@@ -51,6 +51,7 @@ def k_fold_cross_validation():
 
 def main():
     five_results = []
+    print(CONFIG.__class__.__name__)
 
     for i in range(5):
         iteration_results = k_fold_cross_validation()

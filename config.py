@@ -28,11 +28,10 @@ class Config:
     VIDEO_DIM = 1000
     AUDIO_DIM = 1024
 
-    CONTEXT_HIDDEN = 32
-    TEXT_HIDDEN = 32
+    TEXT_HIDDEN = 128
     VIDEO_HIDDEN = 128
-    AUDIO_HIDDEN = 16
-    SPEAKER_HIDDEN = 4
+    AUDIO_HIDDEN = 128
+    SPEAKER_HIDDEN = 8
 
     VIDEO_DROPOUT = 0.2
     AUDIO_DROPOUT = 0.2
@@ -90,4 +89,4 @@ class VideoAndAudioAndText(Config):
     USE_VISUAL = True
     USE_TEXT = True
 
-CONFIG = VideoAndAudioAndText()
+CONFIG = TextAndAudio()

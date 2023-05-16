@@ -25,10 +25,7 @@ class SubNet(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-            Read the bert text embeddings
-
             :param x: A tensor representing the input modality
-
             :return: A tensor containing the output of the three layers
         """
         normed = self.norm(x)
