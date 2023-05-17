@@ -17,8 +17,11 @@ def k_fold_cross_validation(iteration: int):
     for fold, (train_index, test_index) in enumerate(dataloader_gen.split_indices):
         print('-' * 25, " Fold ", fold, '-' * 25)
 
-        author_ind = get_author_ind(train_index, dataloader_gen.data_input)
-        speakers_num = len(author_ind)
+        author_ind = None
+        speakers_num = 0
+        if CONFIG.USE_SPEAKER:
+            author_ind = get_author_ind(train_index, dataloader_gen.data_input)
+            speakers_num = len(author_ind)
 
         train_loader = dataloader_gen.get_data_loader(train_index, author_ind)
         val_loader = dataloader_gen.get_data_loader(test_index, author_ind)

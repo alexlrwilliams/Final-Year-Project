@@ -12,7 +12,6 @@ class ModalityFusion(nn.Module):
         self.input_embedding_A = input_embedding_a
         self.shared_embedding = CONFIG.SHARED_EMBEDDING
         self.projection_embedding = CONFIG.PROJECTION_EMBEDDING
-        self.dropout = 0.5
 
         self.A_context_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
         self.A_utterance_share = nn.Linear(self.input_embedding_A, self.shared_embedding)
@@ -65,17 +64,22 @@ class SingleModalityFusion(ModalityFusion):
 
             :return: A tensor containing the concatenated / fused output of the three input modalities
         """
-
-        shared_context = self.norm_context(
-            nn.functional.relu(self.context_share(context)))
-
         shared_input = self.norm_input(
             nn.functional.relu(self.input_share(input_modality)))
 
-        updated_shared = shared_input * self.attention_aggregator(
-            shared_input, shared_context)
+        if CONFIG.USE_CONTEXT:
+            shared_context = self.norm_context(
+                nn.functional.relu(self.context_share(context)))
 
-        return torch.cat((updated_shared, speaker_embedding), dim=1)
+            updated_shared = shared_input * self.attention_aggregator(
+                shared_input, shared_context)
+        else:
+            updated_shared = shared_input * self.attention_aggregator(
+                shared_input, shared_input)
+
+        if CONFIG.USE_SPEAKER:
+            return torch.cat((updated_shared, speaker_embedding), dim=1)
+        return updated_shared
 
 class DoubleModalityFusion(ModalityFusion):
     def __init__(self, input_embedding_a: int, input_embedding_b: int) -> None:
@@ -89,34 +93,44 @@ class DoubleModalityFusion(ModalityFusion):
         self.norm_B_context = nn.BatchNorm1d(self.shared_embedding)
         self.norm_B_utterance = nn.BatchNorm1d(self.shared_embedding)
 
-    def attention_aggregator(self, feA, feB, feC, feD):
+    def attention_aggregator_context(self, feA, feB, feC, feD):
         """ This method caluates the attention for feA with respect to others"""
         input = self.attention(feA, feB) + self.attention(feA, feC) + self.attention(feA, feD)
-        # here we call for pairwise attention
+        return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
+
+    def attention_aggregator(self, feA, feB):
+        """ This method caluates the attention for feA with respect to others"""
+        input = self.attention(feA, feB)
         return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
 
     def forward(self, uA, cA, uB, cB, speaker_embedding):
         """making Feature Projection in order to make all feature of same dimension"""
-
-        shared_A_context = self.norm_A_context(
-            nn.functional.relu(self.A_context_share(cA)))
         shared_A_utterance = self.norm_A_utterance(
             nn.functional.relu(self.A_utterance_share(uA)))
-
-        shared_B_context = self.norm_B_context(
-            nn.functional.relu(self.B_context_share(cB)))
         shared_B_utterance = self.norm_B_utterance(
             nn.functional.relu(self.B_utterance_share(uB)))
 
-        updated_shared_A = shared_A_utterance * self.attention_aggregator(
-            shared_A_utterance, shared_A_context, shared_B_context, shared_B_utterance)
+        if CONFIG.USE_CONTEXT:
+            shared_A_context = self.norm_A_context(
+                nn.functional.relu(self.A_context_share(cA)))
+            shared_B_context = self.norm_B_context(
+                nn.functional.relu(self.B_context_share(cB)))
 
-        updated_shared_B = shared_B_utterance * self.attention_aggregator(
-            shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance)
+            updated_shared_A = shared_A_utterance * self.attention_aggregator_context(
+                shared_A_utterance, shared_A_context, shared_B_context, shared_B_utterance)
+
+            updated_shared_B = shared_B_utterance * self.attention_aggregator_context(
+                shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance)
+        else:
+            updated_shared_A = shared_A_utterance * self.attention_aggregator(shared_A_utterance, shared_B_utterance)
+
+            updated_shared_B = shared_B_utterance * self.attention_aggregator(shared_B_utterance, shared_A_utterance)
 
         input = torch.cat((updated_shared_A, updated_shared_B), dim=1)
 
-        return torch.cat((input, speaker_embedding), dim=1)
+        if CONFIG.USE_SPEAKER:
+            return torch.cat((input, speaker_embedding), dim=1)
+        return input
 
 class TripleModalityFusion(DoubleModalityFusion):
     def __init__(self, input_embedding_a: int, input_embedding_b: int, input_embedding_C: int):
@@ -130,7 +144,13 @@ class TripleModalityFusion(DoubleModalityFusion):
         self.norm_C_context = nn.BatchNorm1d(self.shared_embedding)
         self.norm_C_utterance = nn.BatchNorm1d(self.shared_embedding)
 
-    def attention_aggregator(self, feA, feB, feC, feD, feE, feF):
+    def attention_aggregator(self, feA, feB, feC):
+        """ This method caluates the attention for feA with respect to others"""
+        input = self.attention(feA, feB) + self.attention(feA, feC)
+        # here we call for pairwise attention
+        return nn.functional.softmax(self.collaborative_gate_2(input), dim=1)
+
+    def attention_aggregator_context(self, feA, feB, feC, feD, feE, feF):
         """ This method caluates the attention for feA with respect to others"""
         input = self.attention(feA, feB) + self.attention(feA, feC) + self.attention(
             feA, feD) + self.attention(feA, feE) + self.attention(feA, feF)
@@ -139,31 +159,41 @@ class TripleModalityFusion(DoubleModalityFusion):
 
     def forward(self, uA, cA, uB, cB, uC, cC, speaker_embedding):
         """making Feature Projection in order to make all feature of same dimension"""
-
-        shared_A_context = self.norm_A_context(
-            nn.functional.relu(self.A_context_share(cA)))
         shared_A_utterance = self.norm_A_utterance(
             nn.functional.relu(self.A_utterance_share(uA)))
-
-        shared_B_context = self.norm_B_context(
-            nn.functional.relu(self.B_context_share(cB)))
         shared_B_utterance = self.norm_B_utterance(
             nn.functional.relu(self.B_utterance_share(uB)))
-
-        shared_C_context = self.norm_C_context(
-            nn.functional.relu(self.C_context_share(cC)))
         shared_C_utterance = self.norm_C_utterance(
             nn.functional.relu(self.C_utterance_share(uC)))
 
+        if CONFIG.USE_CONTEXT:
+            shared_A_context = self.norm_A_context(
+                nn.functional.relu(self.A_context_share(cA)))
+            shared_B_context = self.norm_B_context(
+                nn.functional.relu(self.B_context_share(cB)))
+            shared_C_context = self.norm_C_context(
+                nn.functional.relu(self.C_context_share(cC)))
 
-        updated_shared_A = shared_A_utterance * self.attention_aggregator(
-            shared_A_utterance, shared_A_context, shared_C_context, shared_C_utterance, shared_B_context, shared_B_utterance)
-        updated_shared_C = shared_C_utterance * self.attention_aggregator(
-            shared_C_utterance, shared_C_context, shared_A_context, shared_A_utterance, shared_B_context, shared_B_utterance)
-        updated_shared_B = shared_B_utterance * self.attention_aggregator(
-            shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance, shared_C_context, shared_C_utterance)
+            updated_shared_A = shared_A_utterance * self.attention_aggregator_context(
+                shared_A_utterance, shared_A_context, shared_C_context, shared_C_utterance, shared_B_context,
+                shared_B_utterance)
+            updated_shared_B = shared_B_utterance * self.attention_aggregator_context(
+                shared_B_utterance, shared_B_context, shared_A_context, shared_A_utterance, shared_C_context,
+                shared_C_utterance)
+            updated_shared_C = shared_C_utterance * self.attention_aggregator_context(
+                shared_C_utterance, shared_C_context, shared_A_context, shared_A_utterance, shared_B_context,
+                shared_B_utterance)
+        else:
+            updated_shared_A = shared_A_utterance * self.attention_aggregator(
+                shared_A_utterance, shared_C_utterance, shared_B_utterance)
+            updated_shared_B = shared_B_utterance * self.attention_aggregator(
+                shared_B_utterance, shared_A_utterance, shared_C_utterance)
+            updated_shared_C = shared_C_utterance * self.attention_aggregator(
+                shared_C_utterance, shared_A_utterance, shared_B_utterance)
 
         input = torch.cat((updated_shared_A, updated_shared_C), dim=1)
         input = torch.cat((input, updated_shared_B), dim=1)
 
-        return torch.cat((input, speaker_embedding), dim=1)
+        if CONFIG.USE_SPEAKER:
+            return torch.cat((input, speaker_embedding), dim=1)
+        return input

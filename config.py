@@ -1,9 +1,11 @@
 # CONFIG.py
+from inspect import getmembers
+
 import torch
 
 class Config:
-    USE_CONTEXT = True
-    USE_SPEAKER = True
+    USE_CONTEXT = False
+    USE_SPEAKER = False
 
     USE_TEXT = False
     USE_AUDIO = False
@@ -62,37 +64,103 @@ class Config:
     MODEL_PATH = "saved/" + MODEL_NAME + ".pth"
     RESULT_FILE = "output/{}.json"
 
+class SpeakerMixin:
+    USE_SPEAKER = True
+
+class ContextMixin:
+    USE_CONTEXT = True
+
 class SingleModality(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING
+
+class SingleModalityWithSpeaker(SpeakerMixin, Config):
     POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING + Config.SPEAKER_HIDDEN
 
 class DoubleModality(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 2
+
+class DoubleModalityWithSpeaker(SpeakerMixin, Config):
     POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 2 + Config.SPEAKER_HIDDEN
 
 class VideoOnly(SingleModality):
     USE_VISUAL = True
 
+class VideoOnlyWithSpeaker(SingleModalityWithSpeaker):
+    USE_VISUAL = True
+
+class VideoOnlyWithContext(ContextMixin, VideoOnly): pass
+
+class VideoOnlyWithSpeakerAndContext(ContextMixin, VideoOnlyWithSpeaker): pass
+
 class TextOnly(SingleModality):
     USE_TEXT = True
 
+class TextOnlyWithSpeaker(SingleModalityWithSpeaker):
+    USE_TEXT = True
+class TextOnlyWithContext(ContextMixin, TextOnly): pass
+class TextOnlyWithSpeakerAndContext(ContextMixin, TextOnlyWithSpeaker): pass
+
 class AudioOnly(SingleModality):
     USE_AUDIO = True
+
+class AudioOnlyWithSpeaker(SingleModalityWithSpeaker):
+    USE_AUDIO = True
+
+class AudioOnlyWithContext(ContextMixin, AudioOnly): pass
+
+class AudioOnlyWithSpeakerAndContext(ContextMixin, AudioOnlyWithSpeaker): pass
 
 class TextAndAudio(DoubleModality):
     USE_TEXT = True
     USE_AUDIO = True
 
+class TextAndAudioWithSpeaker(DoubleModalityWithSpeaker):
+    USE_TEXT = True
+    USE_AUDIO = True
+
+class TextAndAudioWithContext(ContextMixin, TextAndAudio): pass
+
+class TextAndAudioWithSpeakerAndContext(ContextMixin, TextAndAudioWithSpeaker): pass
+
 class AudioAndVideo(DoubleModality):
     USE_AUDIO = True
     USE_VISUAL = True
+
+class AudioAndVideoWithSpeaker(DoubleModalityWithSpeaker):
+    USE_AUDIO = True
+    USE_VISUAL = True
+
+class AudioAndVideoWithContext(ContextMixin, AudioAndVideo): pass
+
+class AudioAndVideoWithSpeakerAndContext(ContextMixin, AudioAndVideoWithSpeaker): pass
 
 class TextAndVideo(DoubleModality):
     USE_TEXT = True
     USE_VISUAL = True
 
+class TextAndVideoWithSpeaker(DoubleModalityWithSpeaker):
+    USE_TEXT = True
+    USE_VISUAL = True
+
+class TextAndVideoWithContext(ContextMixin, TextAndVideo): pass
+
+class TextAndVideoWithSpeakerAndContext(ContextMixin, TextAndVideoWithSpeaker): pass
+
 class VideoAndAudioAndText(Config):
+    POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 3
+    USE_AUDIO = True
+    USE_VISUAL = True
+    USE_TEXT = True
+
+class VideoAndAudioAndTextWithSpeaker(SpeakerMixin, Config):
     POST_FUSION_DIM_1 = Config.SHARED_EMBEDDING * 3 + Config.SPEAKER_HIDDEN
     USE_AUDIO = True
     USE_VISUAL = True
     USE_TEXT = True
 
-CONFIG = VideoAndAudioAndText()
+class VideoAndAudioAndTextWithContext(ContextMixin, VideoAndAudioAndText): pass
+
+class VideoAndAudioAndTextWithSpeakerAndContext(ContextMixin, VideoAndAudioAndTextWithSpeaker): pass
+
+CONFIG = VideoAndAudioAndTextWithSpeaker()
+print([x for x in getmembers(CONFIG) if 'USE' in x[0] and x[1] is True])

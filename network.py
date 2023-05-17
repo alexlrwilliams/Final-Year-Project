@@ -6,7 +6,6 @@ from classifier import Classifier
 from config import CONFIG
 from fusion import SingleModalityFusion, DoubleModalityFusion, TripleModalityFusion
 
-
 class SubNet(nn.Module):
     """
         Produce a pytorch neural network module used as a subnetwork for each modality
@@ -50,6 +49,7 @@ class WeightedMultiModalFusionNetwork(Classifier):
         self.video_subnet = SubNet(CONFIG.VIDEO_DIM, CONFIG.VIDEO_HIDDEN, CONFIG.VIDEO_DROPOUT) if CONFIG.USE_VISUAL else None
         self.audio_subnet = SubNet(CONFIG.AUDIO_DIM, CONFIG.AUDIO_HIDDEN, CONFIG.AUDIO_DROPOUT) if CONFIG.USE_AUDIO else None
         self.text_subnet = SubNet(CONFIG.TEXT_DIM, CONFIG.TEXT_HIDDEN, CONFIG.TEXT_DROPOUT) if CONFIG.USE_TEXT else None
+        print(CONFIG.USE_SPEAKER)
         self.speaker_subnet = SubNet(speaker_num, CONFIG.SPEAKER_HIDDEN, CONFIG.SPEAKER_DROPOUT) if CONFIG.USE_SPEAKER else None
 
         self.t_fusion = SingleModalityFusion(CONFIG.TEXT_HIDDEN)
